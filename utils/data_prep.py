@@ -1,13 +1,11 @@
 import copy
-import time
-import os
-import pickle
-from fastprogress import progress_bar
 from ckonlpy.tag import Twitter
 from tqdm import tqdm
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+
+twitter = Twitter()
 
 def save_data(data, filename):
     torch.save(data, filename)
@@ -76,13 +74,9 @@ def seg_and_mention_location(raw_sents_in_list, alias2id):
     character_mention_poses = {}
     seg_sents = []
     
-    twitter = Twitter()
-
+    # twitter = Twitter()
     for sent_idx, sent in enumerate(raw_sents_in_list):
-        # sent = "“我知道哩，你这样情况，在咱县贷款是确有困难！”"
-        # seg_sentc = list(jieba.cut(sent, cut_all=False))
         seg_sent = twitter.morphs(sent)
-        # return print(seg_sent, seg_sentc, sent)
         for word_idx, word in enumerate(seg_sent):
             if word in alias2id:
                 if alias2id[word] in character_mention_poses:
@@ -209,10 +203,6 @@ class ISDataset(Dataset):
         return self.data[idx]
 
 
-def collate_fn(batch):
-    return batch
-
-
 def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filename=None):
     """
     Build the dataloader for training.
@@ -240,7 +230,7 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
             one_hot_label: one-hot label of the true speaker on list(mention_poses.keys()).
             true_index: index of the speaker on list(mention_poses.keys()).
     """
-    twitter = Twitter()
+    # twitter = Twitter()
     for alias in alias2id:
         twitter.add_dictionary(alias, 'Noun')
 
@@ -268,25 +258,26 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
 
             if skip_only_one and len(candidate_mention_poses) == 1:
                 continue
-            
+
             CSSs, sent_char_lens, mention_poses, quote_idxes = create_CSS(seg_sents, candidate_mention_poses, args.ws, args.length_limit)
-            
+
             one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1 
                              for character_idx in candidate_mention_poses.keys()]
-            
+
             true_index = one_hot_label.index(1) if 1 in one_hot_label else 0
 
         if offset == 24:
             category = line.strip().split()[-1]
             data_list.append((seg_sents, CSSs, sent_char_lens, mention_poses, 
                               quote_idxes, one_hot_label, true_index, category))
-            
-    data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=collate_fn)
+
+    data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
     if save_filename:
         save_data(data_list, save_filename)
 
     return data_loader
 
+
 def load_data_loader(saved_filename):
     data_list = load_data(saved_filename)
-    return DataLoader(ISDataset(data_list), batch_size=1, collate_fn=collate_fn)
+    return DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])

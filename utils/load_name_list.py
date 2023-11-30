@@ -1,6 +1,6 @@
 # load name list from name_list.txt
-
 name_list_path = './data/name_list.txt'
+
 
 # load the name list from file
 def get_alias2id(name_list_path):
