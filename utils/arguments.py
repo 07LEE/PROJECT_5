@@ -34,7 +34,7 @@ def get_train_args():
     parser.add_argument('--lr', type=float, default=2e-5)  # Change to your desired value
     parser.add_argument('--optimizer', type=str, default='adam')
     parser.add_argument('--dropout', type=float, default=0.5)
-    parser.add_argument('--num_epochs', type=int, default=50)
+    parser.add_argument('--num_epochs', type=int, default=10)
     parser.add_argument('--batch_size', type=int, default=16)  # Change to your desired value
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--patience', type=int, default=10)
@@ -43,8 +43,8 @@ def get_train_args():
     parser.add_argument('--train_file', type=str, default=f'{DATA_PREFIX}train_unsplit.txt')
     parser.add_argument('--dev_file', type=str, default=f'{DATA_PREFIX}dev_unsplit.txt')
     parser.add_argument('--test_file', type=str, default=f'{DATA_PREFIX}test_unsplit.txt')
-    parser.add_argument('--ws', type=int, default=10)
     parser.add_argument('--name_list_path', type=str, default=f'{DATA_PREFIX}/name_list.txt')
+    parser.add_argument('--ws', type=int, default=10)
 
     parser.add_argument('--length_limit', type=int, default=510)
 

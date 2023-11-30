@@ -1,10 +1,7 @@
-# Data pre-processing and data loader generation.
-
 import copy
 import time
 import os
 import pickle
-import jieba
 from fastprogress import progress_bar
 from ckonlpy.tag import Twitter
 from tqdm import tqdm
@@ -12,6 +9,11 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+def save_data(data, filename):
+    torch.save(data, filename)
+
+def load_data(filename):
+    return torch.load(filename)
 
 def NML(seg_sents, mention_positions, ws):
     """
@@ -207,7 +209,11 @@ class ISDataset(Dataset):
         return self.data[idx]
 
 
-def build_data_loader(data_file, alias2id, args, skip_only_one=False):
+def collate_fn(batch):
+    return batch
+
+
+def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filename=None):
     """
     Build the dataloader for training.
 
@@ -263,10 +269,7 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False):
             if skip_only_one and len(candidate_mention_poses) == 1:
                 continue
             
-            CSSs, sent_char_lens, mention_poses, quote_idxes = create_CSS(seg_sents, 
-                                                                          candidate_mention_poses, 
-                                                                          args.ws, 
-                                                                          args.length_limit)
+            CSSs, sent_char_lens, mention_poses, quote_idxes = create_CSS(seg_sents, candidate_mention_poses, args.ws, args.length_limit)
             
             one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1 
                              for character_idx in candidate_mention_poses.keys()]
@@ -277,5 +280,13 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False):
             category = line.strip().split()[-1]
             data_list.append((seg_sents, CSSs, sent_char_lens, mention_poses, 
                               quote_idxes, one_hot_label, true_index, category))
+            
+    data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=collate_fn)
+    if save_filename:
+        save_data(data_list, save_filename)
 
-    return DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
+    return data_loader
+
+def load_data_loader(saved_filename):
+    data_list = load_data(saved_filename)
+    return DataLoader(ISDataset(data_list), batch_size=1, collate_fn=collate_fn)

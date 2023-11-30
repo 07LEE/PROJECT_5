@@ -30,8 +30,6 @@ class SeqPooling(nn.Module):
 
     def max_pool(self, seq):
         return seq.max(0)[0]
-        print(seq)
-        return seq.max(0)
 
     def mean_pool(self, seq):
         return seq.mean(0)
@@ -172,5 +170,3 @@ class CSN(nn.Module):
         scores_true = [scores[true_index] for i in range(scores.size(0) - 1)]
 
         return scores, scores_false, scores_true
-
-        
