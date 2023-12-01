@@ -169,11 +169,7 @@ def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
 
         cut_CSS, mention_pos = max_len_cut(CSS, mention_pos)
 
-        # print('cut_Css 확인', cut_CSS)
-
         sent_char_lens = [sum(len(word) for word in sent) for sent in cut_CSS]
-
-        # print(sent_char_lens)
         
         mention_pos_left = sum(sent_char_lens[:mention_pos[0]]) + sum(len(x) for x in cut_CSS[mention_pos[0]][:mention_pos[1]])
         mention_pos_right = mention_pos_left + len(cut_CSS[mention_pos[0]][mention_pos[1]])
@@ -186,6 +182,71 @@ def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
         many_quote_idxes.append(quote_idx)
 
     return many_CSSs, many_sent_char_lens, many_mention_poses, many_quote_idxes
+
+
+def create_KCSS(seg_sents, candidate_mention_poses, ws, max_len):
+
+    assert len(seg_sents) == ws * 2 + 1
+
+    def kmax_len_cut(seg_sents, mention_pos):
+        sent_char_lens = [sum(len(word) for word in sent) for sent in seg_sents]
+        sum_char_len = sum(sent_char_lens)
+
+        running_cut_idx = [len(sent) - 1 for sent in seg_sents]
+
+        while sum_char_len > max_len:
+            max_len_sent_idx = max(list(enumerate(sent_char_lens)), key=lambda x: x[1])[0]
+
+            if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] == mention_pos[1]:
+                running_cut_idx[max_len_sent_idx] -= 1
+
+            if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] < mention_pos[1]:
+                mention_pos[1] -= 1
+
+            reduced_char_len = len(seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]])
+            sent_char_lens[max_len_sent_idx] -= reduced_char_len
+            sum_char_len -= reduced_char_len
+
+            del seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]]
+
+            running_cut_idx[max_len_sent_idx] -= 1
+
+        return seg_sents, mention_pos
+
+    many_CSSs = []
+    many_sent_char_lens = []
+    many_mention_poses = []
+    many_quote_idxes = []
+    many_cut_css = []
+
+    for candidate_idx in candidate_mention_poses.keys():
+
+        nearest_pos = NML(seg_sents, candidate_mention_poses[candidate_idx], ws)
+        if nearest_pos[0] <= ws:
+            CSS = copy.deepcopy(seg_sents[nearest_pos[0]:ws + 1])
+            mention_pos = [0, nearest_pos[1]]
+            quote_idx = ws - nearest_pos[0]
+        else:
+            CSS = copy.deepcopy(seg_sents[ws:nearest_pos[0] + 1])
+            mention_pos = [nearest_pos[0] - ws, nearest_pos[1]]
+            quote_idx = 0
+
+        cut_CSS, mention_pos = kmax_len_cut(CSS, mention_pos)
+
+        sent_char_lens = [sum(len(word) for word in sent) for sent in cut_CSS]
+        
+        mention_pos_left = sum(sent_char_lens[:mention_pos[0]]) + sum(len(x) for x in cut_CSS[mention_pos[0]][:mention_pos[1]])
+        mention_pos_right = mention_pos_left + len(cut_CSS[mention_pos[0]][mention_pos[1]])
+        mention_pos = (mention_pos[0], mention_pos_left, mention_pos_right, mention_pos[1])
+        cat_CSS = ''.join([''.join(sent) for sent in cut_CSS])
+
+        many_CSSs.append(cat_CSS)
+        many_sent_char_lens.append(sent_char_lens)
+        many_mention_poses.append(mention_pos)
+        many_quote_idxes.append(quote_idx)
+        many_cut_css.append(cut_CSS)
+
+    return many_CSSs, many_sent_char_lens, many_mention_poses, many_quote_idxes, many_cut_css
 
 
 class ISDataset(Dataset):
@@ -203,7 +264,7 @@ class ISDataset(Dataset):
         return self.data[idx]
 
 
-def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filename=None):
+def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filename=None, MODEL_NAME='CSN'):
     """
     Build the dataloader for training.
 
@@ -230,52 +291,99 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
             one_hot_label: one-hot label of the true speaker on list(mention_poses.keys()).
             true_index: index of the speaker on list(mention_poses.keys()).
     """
-    # twitter = Twitter()
-    for alias in alias2id:
-        twitter.add_dictionary(alias, 'Noun')
+    if MODEL_NAME == 'CSN':
+        # twitter = Twitter()
+        for alias in alias2id:
+            twitter.add_dictionary(alias, 'Noun')
 
-    # load instances from file
-    with open(data_file, 'r', encoding='utf-8') as fin:
-        data_lines = fin.readlines()
+        # load instances from file
+        with open(data_file, 'r', encoding='utf-8') as fin:
+            data_lines = fin.readlines()
 
-    # pre-processing
-    data_list = []
+        # pre-processing
+        data_list = []
 
-    # print('data_lines', len(data_lines))
-    for i, line in enumerate(tqdm(data_lines)):
-        offset = i % 26
-        
-        if offset == 0:
-            raw_sents_in_list = []
-            continue
-
-        if offset < 22:
-            raw_sents_in_list.append(line.strip())
-
-        if offset == 22:
-            speaker_name = line.strip().split()[-1]
-            seg_sents, candidate_mention_poses = seg_and_mention_location(raw_sents_in_list, alias2id)
-
-            if skip_only_one and len(candidate_mention_poses) == 1:
+        for i, line in enumerate(tqdm(data_lines)):
+            offset = i % 26
+            
+            if offset == 0:
+                raw_sents_in_list = []
                 continue
 
-            CSSs, sent_char_lens, mention_poses, quote_idxes = create_CSS(seg_sents, candidate_mention_poses, args.ws, args.length_limit)
+            if offset < 22:
+                raw_sents_in_list.append(line.strip())
 
-            one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1 
-                             for character_idx in candidate_mention_poses.keys()]
+            if offset == 22:
+                speaker_name = line.strip().split()[-1]
+                seg_sents, candidate_mention_poses = seg_and_mention_location(raw_sents_in_list, alias2id)
 
-            true_index = one_hot_label.index(1) if 1 in one_hot_label else 0
+                if skip_only_one and len(candidate_mention_poses) == 1:
+                    continue
 
-        if offset == 24:
-            category = line.strip().split()[-1]
-            data_list.append((seg_sents, CSSs, sent_char_lens, mention_poses, 
-                              quote_idxes, one_hot_label, true_index, category))
+                CSSs, sent_char_lens, mention_poses, quote_idxes = create_KCSS(seg_sents, candidate_mention_poses, args.ws, args.length_limit)
 
-    data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
-    if save_filename:
-        save_data(data_list, save_filename)
+                one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1 
+                                for character_idx in candidate_mention_poses.keys()]
 
-    return data_loader
+                true_index = one_hot_label.index(1) if 1 in one_hot_label else 0
+
+            if offset == 24:
+                category = line.strip().split()[-1]
+                data_list.append((seg_sents, CSSs, sent_char_lens, mention_poses, 
+                                quote_idxes, one_hot_label, true_index, category))
+
+        data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
+        if save_filename:
+            save_data(data_list, save_filename)
+
+        return data_loader
+    
+    elif MODEL_NAME == 'KCSN':
+        # twitter = Twitter()
+        for alias in alias2id:
+            twitter.add_dictionary(alias, 'Noun')
+
+        # load instances from file
+        with open(data_file, 'r', encoding='utf-8') as fin:
+            data_lines = fin.readlines()
+
+        # pre-processing
+        data_list = []
+
+        for i, line in enumerate(tqdm(data_lines)):
+            offset = i % 26
+            
+            if offset == 0:
+                raw_sents_in_list = []
+                continue
+
+            if offset < 22:
+                raw_sents_in_list.append(line.strip())
+
+            if offset == 22:
+                speaker_name = line.strip().split()[-1]
+                seg_sents, candidate_mention_poses = seg_and_mention_location(raw_sents_in_list, alias2id)
+
+                if skip_only_one and len(candidate_mention_poses) == 1:
+                    continue
+
+                CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css = create_KCSS(seg_sents, candidate_mention_poses, args.ws, args.length_limit)
+
+                one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1 
+                                for character_idx in candidate_mention_poses.keys()]
+
+                true_index = one_hot_label.index(1) if 1 in one_hot_label else 0
+
+            if offset == 24:
+                category = line.strip().split()[-1]
+                data_list.append((seg_sents, CSSs, sent_char_lens, mention_poses, 
+                                quote_idxes, cut_css, one_hot_label, true_index, category))
+
+        data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
+        if save_filename:
+            save_data(data_list, save_filename)
+
+        return data_loader
 
 
 def load_data_loader(saved_filename):

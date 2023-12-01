@@ -1,4 +1,6 @@
 # Generate BERT features.
+import re
+
 class InputFeatures(object):
     """
     Inputs of the BERT model.
@@ -21,7 +23,6 @@ def convert_examples_to_features(examples, tokenizer):
     return
         features: BERT features in a list.
     """
-    import re
     features = []
     for (ex_index, example) in enumerate(examples):
         tokens = list()
@@ -49,3 +50,35 @@ def convert_examples_to_features(examples, tokenizer):
                 input_type_ids=input_type_ids))
 
     return features
+
+
+def convert_examples_to_Kfeatures(examples, tokenizer):
+    features = []
+    tokens_list = []
+    cut_css_list = []
+
+    for (ex_index, example) in enumerate(examples):
+        tokens = tokenizer.tokenize(example)
+        tokens_list.append(tokens)
+
+        new_tokens = []
+        input_type_ids = []
+
+        new_tokens.append("[CLS]")
+        input_type_ids.append(0)
+        new_tokens += tokens
+        input_type_ids += [0] * len(tokens)
+        new_tokens.append("[SEP]")
+        input_type_ids.append(0)
+
+        input_ids = tokenizer.convert_tokens_to_ids(new_tokens)
+        input_mask = [1] * len(input_ids)
+
+        features.append(
+            InputFeatures(
+                tokens=new_tokens,
+                input_ids=input_ids,
+                input_mask=input_mask,
+                input_type_ids=input_type_ids))
+
+    return features, tokens_list
