@@ -1,6 +1,7 @@
 # Generate BERT features.
 import re
 
+
 class InputFeatures(object):
     """
     Inputs of the BERT model.

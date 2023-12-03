@@ -21,6 +21,8 @@ project_root/
 |   |   └-- validation_data.txt  # 검증용 데이터 파일
 |   └-- outputs/
 |   |   └--model_checkpoints
+|   └-- test/ # 학습한 모델 테스트
+|   |   └-- validate.py
 |   └-- training_log/
 |   |   └--tensorborad
 |   ├-- arguments.py
