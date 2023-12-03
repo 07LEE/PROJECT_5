@@ -40,8 +40,7 @@ def eval(eval_data, subset_name, writer, epoch):
 
     for _, CSSs, sent_char_lens, mention_poses, quote_idxes, _, true_index, category in eval_data:
         with torch.no_grad():
-            features = convert_examples_to_features(
-                examples=CSSs, tokenizer=tokenizer)
+            features = convert_examples_to_features(examples=CSSs, tokenizer=tokenizer)
             scores, scores_false, scores_true = model(
                 features, sent_char_lens, mention_poses, quote_idxes, true_index, device)
             loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(
@@ -61,7 +60,6 @@ def eval(eval_data, subset_name, writer, epoch):
     writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
 
     logging.info(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-
     print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
     print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
 
@@ -75,7 +73,7 @@ if __name__ == '__main__':
     TIMESTANP_FORMAT = '%Y%m%d-%H%M%S'
 
     SAVE_LOADER = 'training/data_loader'
-    MODEL_NAME = 'CSN'
+    MODEL_NAME = 'KCSN'
 
     # args & data path
     args = get_train_args()
@@ -85,18 +83,19 @@ if __name__ == '__main__':
     name_list_path = args.name_list_path
 
     # checkpoint & logging
-    checkpoint_dir = ''
-    LOG_FATH = 'training/training_logs'
+    checkpoint_dir = args.checkpoint_dir
+    LOG_FATH = args.training_logs
 
-    log_dir = os.path.join(checkpoint_dir, LOG_FATH,
+    log_dir = os.path.join(LOG_FATH,
                            datetime.datetime.now().strftime(TIMESTANP_FORMAT))
 
     writer = SummaryWriter(log_dir=log_dir)
-    logging_name = os.path.join(checkpoint_dir, LOG_FATH, '/training_log.log')
+    logging_name = os.path.join(LOG_FATH, '/training_log.log')
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT,
                         datefmt=DATE_FORMAT, filename=logging_name)
 
     # device -----------------------------------------------------
+    print("---------------------------------------------------------")
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print('device : ', device)
     print('MODEL_NAME : ', MODEL_NAME)
@@ -104,79 +103,48 @@ if __name__ == '__main__':
     # alias to id ------------------------------------------------
     alias2id = get_alias2id(name_list_path)
 
-    # %% build training, development and test data loaders ----------
+    # build data loaders ------------------------------------------
     example_print = False
 
-    if MODEL_NAME == 'CSN':
-        try:
-            print('load_data_loader ----------------------------------------')
-            train_data = load_data_loader(f'{SAVE_LOADER}/train_data')
-            dev_data = load_data_loader(f'{SAVE_LOADER}/dev_data')
-            test_data = load_data_loader(f'{SAVE_LOADER}/test_data')
-            example_print = True
-
-        except FileNotFoundError:
-            train_data = build_data_loader(train_file, alias2id, args, skip_only_one=True,
-                                           save_filename=f'{SAVE_LOADER}/train_data', MODEL_NAME=MODEL_NAME)
-            dev_data = build_data_loader(
-                dev_file, alias2id, args, save_filename=f'{SAVE_LOADER}/dev_data', MODEL_NAME=MODEL_NAME)
-            test_data = build_data_loader(
-                test_file, alias2id, args, save_filename=f'{SAVE_LOADER}/test_data', MODEL_NAME=MODEL_NAME)
-            print("---------------------------------------------------------")
-
-        if example_print is not False:
-            # example ----------------------------------------------------
-            print('DEV EXAMPLE ---------------------------------------------')
-            dev_test_iter = iter(dev_data)
-            _, CSSs, sent_char_lens, mention_poses, quote_idxes, one_hot_label, true_index, category = next(
-                dev_test_iter)
-            print('Candidate-specific segments : ', CSSs)
-            print('Nearest mention positions : ', mention_poses)
-
-            print('TEST EXAMPLE ---------------------------------------------')
-            test_test_iter = iter(test_data)
-            _, CSSs, sent_char_lens, mention_poses, quote_idxes, one_hot_label, true_index, category = next(
-                test_test_iter)
-            print('Candidate-specific segments : ', CSSs)
-            print('Nearest mention positions : ', mention_poses)
-            print("---------------------------------------------------------")
-
+    try:
+        print('load_data_loader ----------------------------------------')
+        train_data = load_data_loader(f'{SAVE_LOADER}/{MODEL_NAME}/train_data')
+        dev_data = load_data_loader(f'{SAVE_LOADER}/{MODEL_NAME}/dev_data')
+        test_data = load_data_loader(f'{SAVE_LOADER}/{MODEL_NAME}/test_data')
+        example_print = True
+    except FileNotFoundError:
+        train_data = build_data_loader(
+            train_file, alias2id, args, save_filename=f'{SAVE_LOADER}/{MODEL_NAME}/train_data',
+            skip_only_one=True, MODEL_NAME=MODEL_NAME)
+        dev_data = build_data_loader(
+            dev_file, alias2id, args, save_filename=f'{SAVE_LOADER}/{MODEL_NAME}/dev_data', MODEL_NAME=MODEL_NAME)
+        test_data = build_data_loader(
+            test_file, alias2id, args, save_filename=f'{SAVE_LOADER}/{MODEL_NAME}/test_data', MODEL_NAME=MODEL_NAME)
         print("---------------------------------------------------------")
 
-    elif MODEL_NAME == 'KCSN':
-        try:
-            print('load_data_loader ----------------------------------------')
-            train_data = load_data_loader(f'{SAVE_LOADER}/train_Kdata')
-            dev_data = load_data_loader(f'{SAVE_LOADER}/dev_Kdata')
-            test_data = load_data_loader(f'{SAVE_LOADER}/test_Kdata')
-            example_print = True
-
-        except FileNotFoundError:
-            train_data = build_data_loader(train_file, alias2id, args, skip_only_one=True,
-                                           save_filename=f'{SAVE_LOADER}/train_Kdata', MODEL_NAME=MODEL_NAME)
-            dev_data = build_data_loader(
-                dev_file, alias2id, args, save_filename=f'{SAVE_LOADER}/dev_Kdata', MODEL_NAME=MODEL_NAME)
-            test_data = build_data_loader(
-                test_file, alias2id, args, save_filename=f'{SAVE_LOADER}/test_Kdata', MODEL_NAME=MODEL_NAME)
-            print("---------------------------------------------------------")
-
-        if example_print is not False:
-            # example ----------------------------------------------------
-            print('DEV EXAMPLE ---------------------------------------------')
-            dev_test_iter = iter(dev_data)
+    if example_print is not False:
+        print('DEV EXAMPLE : ')
+        dev_test_iter = iter(dev_data)
+        if MODEL_NAME == 'CSN':
+            _, CSSs, sent_char_lens, mention_poses, quote_idxes, one_hot_label, true_index, category = next(
+                dev_test_iter)
+        elif MODEL_NAME == 'KCSN':
             _, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _ = next(
                 dev_test_iter)
-            print('Candidate-specific segments : ', CSSs)
-            print('Nearest mention positions : ', mention_poses)
-
-            print('TEST EXAMPLE ---------------------------------------------')
-            test_test_iter = iter(test_data)
+        print('- Candidate-specific segments : ', CSSs)
+        print('- Nearest mention positions : ', mention_poses)
+        print('TEST EXAMPLE : ')
+        test_test_iter = iter(test_data)
+        if MODEL_NAME == 'CSN':
             _, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _ = next(
                 test_test_iter)
-            print('Candidate-specific segments : ', CSSs)
-            print('Nearest mention positions : ', mention_poses)
-            print("---------------------------------------------------------")
+        elif MODEL_NAME == 'KCSN':
+            _, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _ = next(
+                test_test_iter)
+        print('- Candidate-specific segments : ', CSSs)
+        print('- Nearest mention positions : ', mention_poses)
 
+    print("---------------------------------------------------------")
     print("The number of training instances: " + str(len(train_data)))
     print("The number of development instances: " + str(len(dev_data)))
     print("The number of test instances: " + str(len(test_data)))
@@ -187,8 +155,10 @@ if __name__ == '__main__':
 
     if MODEL_NAME == 'KCSN':
         model = KCSN(args)
-    else:
+    elif MODEL_NAME == 'CSN':
         model = CSN(args)
+    else:
+        raise ValueError("Unknown model type...")
 
     model = model.to(device)
 
@@ -306,8 +276,7 @@ if __name__ == '__main__':
             model.eval()
 
             # development stage ------------------------------------------
-            overall_dev_acc, dev_avg_loss = eval(
-                dev_data, 'dev', writer, epoch)
+            overall_dev_acc, dev_avg_loss = eval(dev_data, 'dev', writer, epoch)
 
             # save the model with best performance
             if overall_dev_acc > best_overall_dev_acc:
@@ -421,8 +390,7 @@ if __name__ == '__main__':
             model.eval()
 
             # development stage ------------------------------------------
-            overall_dev_acc, dev_avg_loss = eval(
-                dev_data, 'dev', writer, epoch)
+            overall_dev_acc, dev_avg_loss = eval(dev_data, 'dev', writer, epoch)
 
             # save the model with best performance
             if overall_dev_acc > best_overall_dev_acc:
@@ -437,8 +405,7 @@ if __name__ == '__main__':
             # only save the model which outperforms the former best on development set
             if new_best:
                 # test stage
-                overall_test_acc, test_avg_loss = eval(
-                    test_data, 'test', writer, epoch)
+                overall_test_acc, test_avg_loss = eval(test_data, 'test', writer, epoch)
                 try:
                     info_json = {"epoch": epoch}
                     save_checkpoint({
@@ -458,15 +425,15 @@ if __name__ == '__main__':
                 break
             print('------------------------------------------------------')
 
-        print('best_overall_dev_acc :', best_overall_dev_acc)
-        print('overall_test_acc : ', overall_test_acc)
+    print('best_overall_dev_acc :', best_overall_dev_acc)
+    print('overall_test_acc : ', overall_test_acc)
 
-        # 학습 루프 완전히 종료 후에 모델 저장
-        save_path = os.path.join(checkpoint_dir, 'final_model.pth')
-        torch.save(model.state_dict(), save_path)
-        print(f"Final model saved to {save_path}")
+    # 학습 루프 완전히 종료 후에 모델 저장
+    save_path = os.path.join(checkpoint_dir, 'final_model.pth')
+    torch.save(model.state_dict(), save_path)
+    print(f"Final model saved to {save_path}")
 
-        # 텐서보드 로그 폴더 닫기
-        writer.close()
+    # 텐서보드 로그 폴더 닫기
+    writer.close()
 
 # %%
