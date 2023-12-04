@@ -85,13 +85,13 @@ def seg_and_mention_location(raw_sents_in_list, alias2id):
         for word_idx, word in enumerate(seg_sent):
             if word in alias2id:
                 if alias2id[word] in character_mention_poses:
-                    character_mention_poses[alias2id[word]].append(
-                        [sent_idx, word_idx])
+                    character_mention_poses[alias2id[word]].append([sent_idx, word_idx])
                 else:
-                    character_mention_poses[alias2id[word]] = [
-                        [sent_idx, word_idx]]
+                    character_mention_poses[alias2id[word]] = [[sent_idx, word_idx]]
         seg_sents.append(seg_sent)
-    return seg_sents, character_mention_poses
+    name_list_index = list(character_mention_poses.keys())
+    # print(name_list_index)
+    return seg_sents, character_mention_poses, name_list_index
 
 
 def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
@@ -258,7 +258,7 @@ def create_KCSS(seg_sents, candidate_mention_poses, ws, max_len):
             len(cut_CSS[mention_pos[0]][mention_pos[1]])
         mention_pos = (mention_pos[0], mention_pos_left,
                        mention_pos_right, mention_pos[1])
-        cat_CSS = ''.join([''.join(sent) for sent in cut_CSS])
+        cat_CSS = ' '.join([' '.join(sent) for sent in cut_CSS])
 
         many_CSSs.append(cat_CSS)
         many_sent_char_lens.append(sent_char_lens)
@@ -355,7 +355,7 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
                 category = line.strip().split()[-1]
                 data_list.append((seg_sents, CSSs, sent_char_lens,
                                   mention_poses, quote_idxes, one_hot_label,
-                                  true_index, category))
+                                  true_index, category, name_list_index))
 
         data_loader = DataLoader(ISDataset(data_list),
                                  batch_size=1, collate_fn=lambda x: x[0])
@@ -388,7 +388,7 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
 
             if offset == 22:
                 speaker_name = line.strip().split()[-1]
-                seg_sents, candidate_mention_poses = seg_and_mention_location(
+                seg_sents, candidate_mention_poses, name_list_index = seg_and_mention_location(
                     raw_sents_in_list, alias2id)
 
                 if skip_only_one and len(candidate_mention_poses) == 1:
@@ -407,7 +407,7 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
                 category = line.strip().split()[-1]
                 data_list.append((seg_sents, CSSs, sent_char_lens,
                                   mention_poses, quote_idxes, cut_css,
-                                  one_hot_label, true_index, category))
+                                  one_hot_label, true_index, category, name_list_index))
 
         data_loader = DataLoader(ISDataset(data_list),
                                  batch_size=1, collate_fn=lambda x: x[0])
