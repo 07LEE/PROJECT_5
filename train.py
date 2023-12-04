@@ -34,36 +34,67 @@ def eval(eval_data, subset_name, writer, epoch):
         overall_eval_acc: Overall accuracy on the subset.
         eval_avg_loss: Average loss on the subset.
     """
-    overall_eval_acc_numerator = 0
-    eval_sum_loss = 0
-    total_instances = len(eval_data)
+    if MODEL_NAME == 'CSN':
+        overall_eval_acc_numerator = 0
+        eval_sum_loss = 0
+        total_instances = len(eval_data)
 
-    for _, CSSs, sent_char_lens, mention_poses, quote_idxes, _, true_index, category in eval_data:
-        with torch.no_grad():
-            features = convert_examples_to_features(examples=CSSs, tokenizer=tokenizer)
-            scores, scores_false, scores_true = model(
-                features, sent_char_lens, mention_poses, quote_idxes, true_index, device)
-            loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(
-                0), torch.tensor(-1.0).unsqueeze(0).to(device)) for x, y in zip(scores_false, scores_true)]
+        for _, CSSs, sent_char_lens, mention_poses, quote_idxes, _, true_index, category in eval_data:
+            with torch.no_grad():
+                features = convert_examples_to_features(examples=CSSs, tokenizer=tokenizer)
+                scores, scores_false, scores_true = model(
+                    features, sent_char_lens, mention_poses, quote_idxes, true_index, device)
+                loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(
+                    0), torch.tensor(-1.0).unsqueeze(0).to(device)) for x, y in zip(scores_false, scores_true)]
 
-        eval_sum_loss += sum(x.item() for x in loss_list)
+            eval_sum_loss += sum(x.item() for x in loss_list)
 
-        # evaluate accuracy ------------------------------------------
-        correct = 1 if scores.max(0)[1].item() == true_index else 0
-        overall_eval_acc_numerator += correct
+            # evaluate accuracy ------------------------------------------
+            correct = 1 if scores.max(0)[1].item() == true_index else 0
+            overall_eval_acc_numerator += correct
 
-    overall_eval_acc = overall_eval_acc_numerator / total_instances
-    eval_avg_loss = eval_sum_loss / total_instances
+        overall_eval_acc = overall_eval_acc_numerator / total_instances
+        eval_avg_loss = eval_sum_loss / total_instances
 
-    # logging ------------------------------------------
-    writer.add_scalar('Loss/' + subset_name, eval_avg_loss, epoch)
-    writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
+        # logging ------------------------------------------
+        writer.add_scalar('Loss/' + subset_name, eval_avg_loss, epoch)
+        writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
 
-    logging.info(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-    print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-    print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
+        logging.info(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
+        print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
+        print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
 
-    return overall_eval_acc, eval_avg_loss
+        return overall_eval_acc, eval_avg_loss
+
+    elif MODEL_NAME == 'KCSN':
+        overall_eval_acc_numerator = 0
+        eval_sum_loss = 0
+        total_instances = len(eval_data)
+
+        for _, CSSs, sent_char_lens, mention_poses, quote_idxes,  cut_css, _, true_index, category in eval_data:
+            with torch.no_grad():
+                features, tokens_list = convert_examples_to_features(CSSs, tokenizer, is_Kfeatures=True)
+                scores, scores_false, scores_true = model(features, sent_char_lens, mention_poses, quote_idxes, true_index, device, tokens_list, cut_css)
+                loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(0), torch.tensor(-1.0).unsqueeze(0).to(device)) for x, y in zip(scores_false, scores_true)]
+
+            eval_sum_loss += sum(x.item() for x in loss_list)
+
+            # evaluate accuracy ------------------------------------------
+            correct = 1 if scores.max(0)[1].item() == true_index else 0
+            overall_eval_acc_numerator += correct
+
+        overall_eval_acc = overall_eval_acc_numerator / total_instances
+        eval_avg_loss = eval_sum_loss / total_instances
+
+        # logging ------------------------------------------
+        writer.add_scalar('Loss/' + subset_name, eval_avg_loss, epoch)
+        writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
+
+        logging.info(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
+        print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
+        print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
+
+        return overall_eval_acc, eval_avg_loss
 
 
 if __name__ == '__main__':
