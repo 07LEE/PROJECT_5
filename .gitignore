@@ -1,6 +1,7 @@
 # Ignore Files
 /.pytest_cache/
 /__pycache__/
+__pycache__
 *.pyc*
 *.DS_Store*
 build/
@@ -23,8 +24,9 @@ dist/
 save_data
 training_logs
 tensorboard
-
 data_loader
 
 # 용량 큰 데이터 파일 제외
 data/json
+checkpoint
+*.pth

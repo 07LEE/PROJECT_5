@@ -191,7 +191,7 @@ class KCSN(nn.Module):
             verify = 0
             verify_name = 0
             num_check = 0
-            num_vid = 999
+            num_vid = -999
             accum_char_len = [0]
 
             for idx, txt in enumerate(cut_css[i]):
@@ -207,8 +207,8 @@ class KCSN(nn.Module):
 
                 if num_check == 1000:
                     accum_char_len.append(num_vid)
-                num_check = 1000
 
+                num_check = 1000
                 for string in modified_list:
                     string_nospace = string.replace(' ', '')
                     if len(accum_char_len) > idx + 1:
@@ -219,9 +219,9 @@ class KCSN(nn.Module):
                         if match_result:
                             end_index = match_result.end()
                             verify += 1
-
                             if verify == len(result_string[-7:]):
-                                accum_char_len.append(cnt)
+                                if cnt > accum_char_len[-1]:
+                                    accum_char_len.append(cnt)
                                 verify = 0
                                 num_check = len(accum_char_len)
                         else:
@@ -231,21 +231,17 @@ class KCSN(nn.Module):
             # 빈 부분 해결
             if -999 in accum_char_len:
                 idx = accum_char_len.index(-999)
-                accum_char_len[idx] = int(
-                    (accum_char_len[idx-1] + accum_char_len[idx+1])/2)
+                accum_char_len[idx] = int((accum_char_len[idx-1] + accum_char_len[idx+1])/2)
 
             while -999 in accum_char_len:
                 idx = accum_char_len.index(-999)
-                accum_char_len[idx] = int(
-                    (accum_char_len[idx-1] + accum_char_len[idx+1])/2)
+                accum_char_len[idx] = int((accum_char_len[idx-1] + accum_char_len[idx+1])/2)
 
             if len(accum_char_len) != len(cdd_sent_char_lens)+1:
                 accum_char_len.append(cnt)
 
-            CSS_hid = bert_output['last_hidden_state'][0][1:sum(
-                cdd_sent_char_lens) + 1]
-            qs_hid.append(
-                CSS_hid[accum_char_len[cdd_quote_idx]:accum_char_len[cdd_quote_idx + 1]])
+            CSS_hid = bert_output['last_hidden_state'][0][1:sum(cdd_sent_char_lens) + 1]
+            qs_hid.append(CSS_hid[accum_char_len[cdd_quote_idx]:accum_char_len[cdd_quote_idx + 1]])
 
             # 발화자 부분 찾아서 - bert tokenizer 된 부분을 인덱싱 하는 부분
             cnt = 1
@@ -259,7 +255,7 @@ class KCSN(nn.Module):
             if len(accum_char_len) < cdd_mention_pos[0]+1:
                 maxx_len = accum_char_len[len(accum_char_len)-1]
             elif len(accum_char_len) == cdd_mention_pos[0]+1:
-                maxx_len = accum_char_len[-1] + 1000
+                maxx_len = accum_char_len[-1] + 1000 
             else:
                 maxx_len = accum_char_len[cdd_mention_pos[0]+1]
 
@@ -271,20 +267,17 @@ class KCSN(nn.Module):
 
                     if match_result_unk:
                         cdd_mention_pos_unk.append(cnt)
+
                     if match_result_name and maxx_len > cnt >= accum_char_len[cdd_mention_pos[0]]:
                         verify_name += 1
-
                         if len(cdd_mention_pos_bert_li) < 2:
-
                             if verify_name == 1:
                                 cdd_mention_pos_bert_li.append(cnt)
                                 temp_cnt = 1
-
                             elif verify_name == len(name):
                                 cdd_mention_pos_bert_li.append(cnt)
                                 verify_name = 0
-
-                    elif verify_name == 1 and len(cdd_mention_pos_bert_li) > 0 and len(cdd_mention_pos_bert_li) != 2:
+                    elif verify_name == 1 and len(cdd_mention_pos_bert_li)>0 and len(cdd_mention_pos_bert_li) != 2:
                         cdd_mention_pos_bert_li = cdd_mention_pos_bert_li[:-1]
                         verify_name = 0
                     else:
@@ -292,12 +285,13 @@ class KCSN(nn.Module):
                 cnt += 1
 
             if len(cdd_mention_pos_bert_li) == 0 & len(cdd_mention_pos_unk) != 0:
-                cdd_mention_pos_bert_li.extend(
-                    [cdd_mention_pos_unk[0], cdd_mention_pos_unk[0]+1])
+                cdd_mention_pos_bert_li.extend([cdd_mention_pos_unk[0], cdd_mention_pos_unk[0]+1])
             elif len(cdd_mention_pos_bert_li) != 2:
                 cdd_mention_pos_bert_li = []
-                cdd_mention_pos_bert_li.extend([int(cdd_mention_pos[1] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens])), int(
-                    cdd_mention_pos[2] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens]))])
+                cdd_mention_pos_bert_li.extend([int(cdd_mention_pos[1] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens])), int(cdd_mention_pos[2] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens]))])
+
+            if cdd_mention_pos_bert_li[0] == cdd_mention_pos_bert_li[1]:
+                cdd_mention_pos_bert_li[1] = cdd_mention_pos_bert_li[1]+1
 
             if len(cdd_sent_char_lens) == 1:
                 ctx_hid.append(torch.zeros(1, CSS_hid.size(1)).to(device))
@@ -306,11 +300,8 @@ class KCSN(nn.Module):
             else:
                 ctx_hid.append(CSS_hid[accum_char_len[1]:])
 
-            cdd_mention_pos_bert = (
-                cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
-
-            cdd_hid.append(
-                CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
+            cdd_mention_pos_bert = (cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
+            cdd_hid.append(CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
 
         # pooling
         qs_rep = self.pooling(qs_hid)
@@ -325,8 +316,7 @@ class KCSN(nn.Module):
 
         # scoring
         scores = self.mlp_scorer(feature_vector).view(-1)
-        scores_false = [scores[i]
-                        for i in range(scores.size(0)) if i != true_index]
+        scores_false = [scores[i] for i in range(scores.size(0)) if i != true_index]
         scores_true = [scores[true_index] for i in range(scores.size(0) - 1)]
 
         return scores, scores_false, scores_true
