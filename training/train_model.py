@@ -180,8 +180,11 @@ class KCSN(nn.Module):
         ctx_hid = []
         cdd_hid = []
 
-        for i, (cdd_sent_char_lens, cdd_mention_pos, cdd_quote_idx) in enumerate(zip(sent_char_lens, mention_poses, quote_idxes)):
+        unk_loc_li = []
+        unk_loc = 0
 
+        for i, (cdd_sent_char_lens, cdd_mention_pos, cdd_quote_idx) in enumerate(zip(sent_char_lens, mention_poses, quote_idxes)):
+            unk_loc += 1
             bert_output = self.bert_model(torch.tensor([features[i].input_ids], dtype=torch.long).to(device), token_type_ids=None,
                                           attention_mask=torch.tensor([features[i].input_mask], dtype=torch.long).to(device))
 
@@ -229,16 +232,12 @@ class KCSN(nn.Module):
                     cnt += 1
 
             # 빈 부분 해결
+            if num_check == 1000:
+                accum_char_len.append(num_vid) 
+
             if -999 in accum_char_len:
-                idx = accum_char_len.index(-999)
-                accum_char_len[idx] = int((accum_char_len[idx-1] + accum_char_len[idx+1])/2)
-
-            while -999 in accum_char_len:
-                idx = accum_char_len.index(-999)
-                accum_char_len[idx] = int((accum_char_len[idx-1] + accum_char_len[idx+1])/2)
-
-            if len(accum_char_len) != len(cdd_sent_char_lens)+1:
-                accum_char_len.append(cnt)
+                unk_loc_li.append(unk_loc)
+                continue
 
             CSS_hid = bert_output['last_hidden_state'][0][1:sum(cdd_sent_char_lens) + 1]
             qs_hid.append(CSS_hid[accum_char_len[cdd_quote_idx]:accum_char_len[cdd_quote_idx + 1]])
@@ -316,6 +315,12 @@ class KCSN(nn.Module):
 
         # scoring
         scores = self.mlp_scorer(feature_vector).view(-1)
+        
+        for i in unk_loc_li:
+            new_element = torch.tensor([-0.9000], requires_grad=True)
+            index_to_insert = i-1
+            scores = torch.cat((scores[:index_to_insert], new_element, scores[index_to_insert:]), dim=0)
+
         scores_false = [scores[i] for i in range(scores.size(0)) if i != true_index]
         scores_true = [scores[true_index] for i in range(scores.size(0) - 1)]
 
