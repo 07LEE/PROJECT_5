@@ -1,9 +1,10 @@
+import re
+
 # CSN module definition
 import torch.nn as nn
 import torch.nn.functional as functional
 import torch
 from transformers import AutoModel
-import re
 
 
 def get_nonlinear(nonlinear):
@@ -119,9 +120,8 @@ class CSN(nn.Module):
 
             accum_char_len = [0]
 
-            for sent_idx in range(len(cdd_sent_char_lens)):
-                accum_char_len.append(
-                    accum_char_len[-1] + cdd_sent_char_lens[sent_idx])
+            for sent_idx, char_len in enumerate(cdd_sent_char_lens):
+                accum_char_len.append(accum_char_len[-1] + char_len)
 
             CSS_hid = bert_output['last_hidden_state'][0][1:sum(
                 cdd_sent_char_lens) + 1]
@@ -163,7 +163,6 @@ class KCSN(nn.Module):
 
     It's built on BERT with an MLP and other simple components.
     """
-
     def __init__(self, args):
         super(KCSN, self).__init__()
         self.args = args
@@ -233,7 +232,7 @@ class KCSN(nn.Module):
 
             # 빈 부분 해결
             if num_check == 1000:
-                accum_char_len.append(num_vid) 
+                accum_char_len.append(num_vid)
 
             if -999 in accum_char_len:
                 unk_loc_li.append(unk_loc)
@@ -254,7 +253,7 @@ class KCSN(nn.Module):
             if len(accum_char_len) < cdd_mention_pos[0]+1:
                 maxx_len = accum_char_len[len(accum_char_len)-1]
             elif len(accum_char_len) == cdd_mention_pos[0]+1:
-                maxx_len = accum_char_len[-1] + 1000 
+                maxx_len = accum_char_len[-1] + 1000
             else:
                 maxx_len = accum_char_len[cdd_mention_pos[0]+1]
 
@@ -276,7 +275,7 @@ class KCSN(nn.Module):
                             elif verify_name == len(name):
                                 cdd_mention_pos_bert_li.append(cnt)
                                 verify_name = 0
-                    elif verify_name == 1 and len(cdd_mention_pos_bert_li)>0 and len(cdd_mention_pos_bert_li) != 2:
+                    elif verify_name == 1 and len(cdd_mention_pos_bert_li) > 0 and len(cdd_mention_pos_bert_li) != 2:
                         cdd_mention_pos_bert_li = cdd_mention_pos_bert_li[:-1]
                         verify_name = 0
                     else:
@@ -287,7 +286,8 @@ class KCSN(nn.Module):
                 cdd_mention_pos_bert_li.extend([cdd_mention_pos_unk[0], cdd_mention_pos_unk[0]+1])
             elif len(cdd_mention_pos_bert_li) != 2:
                 cdd_mention_pos_bert_li = []
-                cdd_mention_pos_bert_li.extend([int(cdd_mention_pos[1] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens])), int(cdd_mention_pos[2] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens]))])
+                cdd_mention_pos_bert_li.extend([int(cdd_mention_pos[1] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens])), int(
+                    cdd_mention_pos[2] * accum_char_len[-1]/sum(i for i in cdd_sent_char_lens))])
 
             if cdd_mention_pos_bert_li[0] == cdd_mention_pos_bert_li[1]:
                 cdd_mention_pos_bert_li[1] = cdd_mention_pos_bert_li[1]+1
@@ -299,8 +299,17 @@ class KCSN(nn.Module):
             else:
                 ctx_hid.append(CSS_hid[accum_char_len[1]:])
 
-            cdd_mention_pos_bert = (cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
-            cdd_hid.append(CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
+            cdd_mention_pos_bert = (
+                cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
+            cdd_hid.append(
+                CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
+
+        # qs hid 가 비어있을 경우, 에러 방지용
+        if qs_hid == []:
+            scores = '1'
+            scores_false = 1
+            scores_true = 1
+            return scores, scores_false, scores_true
 
         # pooling
         qs_rep = self.pooling(qs_hid)
@@ -315,7 +324,7 @@ class KCSN(nn.Module):
 
         # scoring
         scores = self.mlp_scorer(feature_vector).view(-1)
-        
+
         for i in unk_loc_li:
             new_element = torch.tensor([-0.9000], requires_grad=True)
             index_to_insert = i-1

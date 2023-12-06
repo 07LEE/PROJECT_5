@@ -1,4 +1,9 @@
+"""
+Author: 
+"""
+
 import copy
+from typing import Any
 from ckonlpy.tag import Twitter
 from tqdm import tqdm
 
@@ -8,36 +13,53 @@ from torch.utils.data import Dataset, DataLoader
 twitter = Twitter()
 
 
-def save_data(data, filename):
+def save_data(data, filename) -> None:
+    """
+    저장된 데이터를 지정된 파일에 저장합니다.
+
+    Parameters:
+        data: 저장할 데이터
+        filename: 저장할 파일의 경로 및 이름
+
+    Returns:
+        None
+    """
     torch.save(data, filename)
 
+def load_data(filename) -> Any:
+    """
+    지정된 파일에서 데이터를 로드합니다.
 
-def load_data(filename):
+    Parameters:
+        filename: 로드할 파일의 경로 및 이름
+
+    Returns:
+        Any: 로드된 데이터
+    """
     return torch.load(filename)
-
 
 def NML(seg_sents, mention_positions, ws):
     """
     Nearest Mention Location
     
-    params
+    params:
         seg_sents: segmented sentences of an instance in a list.
             [[word 1,...] of sentence 1,...].
         mention_positions: the positions of mentions of a candidate.
             [[sentence-level index, word-level index] of mention 1,...].
         ws: single-sided context window size.
 
-    return
+    return:
         The position of the mention which is the nearest to the quote.
     """
     def word_dist(pos):
         """
         The word level distance between quote and the mention position
 
-        param
+        param:
             pos: [sentence-level index, word-level index] of the character mention.
 
-        return
+        return:
             w_d: word-level distance between the mention and the quote.
         """
         if pos[0] == ws:
@@ -59,7 +81,6 @@ def NML(seg_sents, mention_positions, ws):
             # search candidate mention from left-side context
             if pos[0] < ws:
                 return pos
-
     return sorted_positions[0]
 
 
@@ -67,11 +88,11 @@ def seg_and_mention_location(raw_sents_in_list, alias2id):
     """
     Chinese word segmentation and candidate mention location.
 
-    params
+    params:
         raw_sents_in_list: unsegmented sentences of an instance in a list.
         alias2id: a dict mapping character alias to its ID.
 
-    return
+    return:
         seg_sents: segmented sentences of the input instance.
         character_mention_poses: a dict mapping the index of a candidate to its mention positions.
             {character index: [[sentence index, word index in sentence] of mention 1,...]...}.
@@ -85,9 +106,11 @@ def seg_and_mention_location(raw_sents_in_list, alias2id):
         for word_idx, word in enumerate(seg_sent):
             if word in alias2id:
                 if alias2id[word] in character_mention_poses:
-                    character_mention_poses[alias2id[word]].append([sent_idx, word_idx])
+                    character_mention_poses[alias2id[word]].append(
+                        [sent_idx, word_idx])
                 else:
-                    character_mention_poses[alias2id[word]] = [[sent_idx, word_idx]]
+                    character_mention_poses[alias2id[word]] = [
+                        [sent_idx, word_idx]]
         seg_sents.append(seg_sent)
     name_list_index = list(character_mention_poses.keys())
     # print(name_list_index)
@@ -98,14 +121,14 @@ def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
     """
     Create candidate-specific segments for each candidate in an instance.
 
-    params
+    params:
         seg_sents: 2ws + 1 segmented sentences in a list.
         candidate_mention_poses: a dict which contains the position of candiate mentions,
-            with format {character index: [[sentence index, word index in sentence] of mention 1,...]...}.
+        with format {character index: [[sentence index, word index in sentence] of mention 1,...]...}.
         ws: single-sided context window size.
         max_len: maximum length limit.
 
-    return
+    return:
         Returned contents are in lists, in which each element corresponds to a candidate.
         The order of candidate is consistent with that in list(candidate_mention_poses.keys()).
         many_CSS: candidate-specific segments.
@@ -140,8 +163,7 @@ def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
         running_cut_idx = [len(sent) - 1 for sent in seg_sents]
 
         while sum_char_len > max_len:
-            max_len_sent_idx = max(
-                list(enumerate(sent_char_lens)), key=lambda x: x[1])[0]
+            max_len_sent_idx = max(list(enumerate(sent_char_lens)), key=lambda x: x[1])[0]
 
             if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] == mention_pos[1]:
                 running_cut_idx[max_len_sent_idx] -= 1
@@ -198,7 +220,6 @@ def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
 
 
 def create_KCSS(seg_sents, candidate_mention_poses, ws, max_len):
-
     assert len(seg_sents) == ws * 2 + 1
 
     def kmax_len_cut(seg_sents, mention_pos):
@@ -285,7 +306,7 @@ class ISDataset(Dataset):
         return self.data[idx]
 
 
-def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filename=None, MODEL_NAME='CSN'):
+def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_name=None, model_name=None) -> DataLoader:
     """
     Build the dataloader for training.
 
@@ -312,112 +333,73 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_filen
             one_hot_label: one-hot label of the true speaker on list(mention_poses.keys()).
             true_index: index of the speaker on list(mention_poses.keys()).
     """
-    if MODEL_NAME == 'CSN':
-        # twitter = Twitter()
-        for alias in alias2id:
-            twitter.add_dictionary(alias, 'Noun')
+    # Add dictionary
+    for alias in alias2id:
+        twitter.add_dictionary(alias, 'Noun')
 
-        # load instances from file
-        with open(data_file, 'r', encoding='utf-8') as fin:
-            data_lines = fin.readlines()
+    # load instances from file
+    with open(data_file, 'r', encoding='utf-8') as fin:
+        data_lines = fin.readlines()
 
-        # pre-processing
-        data_list = []
+    # pre-processing
+    data_list = []
 
-        for i, line in enumerate(tqdm(data_lines)):
-            offset = i % 26
+    for i, line in enumerate(tqdm(data_lines)):
+        offset = i % 26
 
-            if offset == 0:
-                raw_sents_in_list = []
+        if offset == 0:
+            raw_sents_in_list = []
+            continue
+
+        if offset < 22:
+            raw_sents_in_list.append(line.strip())
+
+        if offset == 22:
+            speaker_name = line.strip().split()[-1]
+            seg_sents, candidate_mention_poses, name_list_index = seg_and_mention_location(
+                raw_sents_in_list, alias2id)
+
+            if skip_only_one and len(candidate_mention_poses) == 1:
                 continue
 
-            if offset < 22:
-                raw_sents_in_list.append(line.strip())
-
-            if offset == 22:
-                speaker_name = line.strip().split()[-1]
-                seg_sents, candidate_mention_poses = seg_and_mention_location(
-                    raw_sents_in_list, alias2id)
-
-                if skip_only_one and len(candidate_mention_poses) == 1:
-                    continue
-
-                CSSs, sent_char_lens, mention_poses, quote_idxes = create_CSS(
+            if model_name == 'CSN':
+                css, sent_char_lens, mention_poses, quote_idxes = create_CSS(
+                    seg_sents, candidate_mention_poses, args.ws, args.length_limit)
+            elif model_name == 'KCSN':
+                css, sent_char_lens, mention_poses, quote_idxes, cut_css = create_KCSS(
                     seg_sents, candidate_mention_poses, args.ws, args.length_limit)
 
-                one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1
-                                 for character_idx in candidate_mention_poses.keys()]
+            one_hot_label = [0 if character_idx != alias2id[speaker_name]
+                             else 1 for character_idx in candidate_mention_poses.keys()]
+            true_index = one_hot_label.index(1) if 1 in one_hot_label else 0
 
-                true_index = one_hot_label.index(
-                    1) if 1 in one_hot_label else 0
+        if offset == 24:
+            category = line.strip().split()[-1]
 
-            if offset == 24:
-                category = line.strip().split()[-1]
-                data_list.append((seg_sents, CSSs, sent_char_lens,
-                                  mention_poses, quote_idxes, one_hot_label,
-                                  true_index, category, name_list_index))
+            if model_name == 'CSN':
+                data_list.append((seg_sents, css, sent_char_lens, mention_poses,
+                                  quote_idxes, one_hot_label, true_index, category, name_list_index))
+            elif model_name == 'KCSN':
+                data_list.append((seg_sents, css, sent_char_lens, mention_poses, quote_idxes,
+                                 cut_css, one_hot_label, true_index, category, name_list_index))
 
-        data_loader = DataLoader(ISDataset(data_list),
-                                 batch_size=1, collate_fn=lambda x: x[0])
-        if save_filename:
-            save_data(data_list, save_filename)
+    data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
 
-        return data_loader
+    if save_name is True:
+        save_data(data_list, save_name)
 
-    elif MODEL_NAME == 'KCSN':
-        # twitter = Twitter()
-        for alias in alias2id:
-            twitter.add_dictionary(alias, 'Noun')
-
-        # load instances from file
-        with open(data_file, 'r', encoding='utf-8') as fin:
-            data_lines = fin.readlines()
-
-        # pre-processing
-        data_list = []
-
-        for i, line in enumerate(tqdm(data_lines)):
-            offset = i % 26
-
-            if offset == 0:
-                raw_sents_in_list = []
-                continue
-
-            if offset < 22:
-                raw_sents_in_list.append(line.strip())
-
-            if offset == 22:
-                speaker_name = line.strip().split()[-1]
-                seg_sents, candidate_mention_poses, name_list_index = seg_and_mention_location(
-                    raw_sents_in_list, alias2id)
-
-                if skip_only_one and len(candidate_mention_poses) == 1:
-                    continue
-
-                CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css = create_KCSS(
-                    seg_sents, candidate_mention_poses, args.ws, args.length_limit)
-
-                one_hot_label = [0 if character_idx != alias2id[speaker_name] else 1
-                                 for character_idx in candidate_mention_poses.keys()]
-
-                true_index = one_hot_label.index(
-                    1) if 1 in one_hot_label else 0
-
-            if offset == 24:
-                category = line.strip().split()[-1]
-                data_list.append((seg_sents, CSSs, sent_char_lens,
-                                  mention_poses, quote_idxes, cut_css,
-                                  one_hot_label, true_index, category, name_list_index))
-
-        data_loader = DataLoader(ISDataset(data_list),
-                                 batch_size=1, collate_fn=lambda x: x[0])
-        if save_filename:
-            save_data(data_list, save_filename)
-
-        return data_loader
+    return data_loader
 
 
-def load_data_loader(saved_filename):
+def load_data_loader(saved_filename: str) -> DataLoader:
+    """
+    저장된 파일에서 데이터를 로드하고 DataLoader 객체로 변환합니다.
+
+    Parameters
+        saved_filename (str): 로드할 파일의 경로 및 이름
+
+    Returns
+        DataLoader: 로드된 데이터를 처리할 DataLoader 객체
+    """
     data_list = load_data(saved_filename)
-    return DataLoader(ISDataset(data_list), batch_size=1,
-                      collate_fn=lambda x: x[0])
+    return DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])

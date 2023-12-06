@@ -20,7 +20,7 @@ from training.training_control import adjust_learning_rate, save_checkpoint
 warnings.filterwarnings(action='ignore')
 
 
-def eval(eval_data, subset_name, writer, epoch):
+def eval(eval_data, subset_name: str, writer, epoch: str):
     """
     Evaluate performance on a given subset.
 
@@ -34,48 +34,37 @@ def eval(eval_data, subset_name, writer, epoch):
         overall_eval_acc: Overall accuracy on the subset.
         eval_avg_loss: Average loss on the subset.
     """
-    if MODEL_NAME == 'CSN':
-        overall_eval_acc_numerator = 0
-        eval_sum_loss = 0
-        total_instances = len(eval_data)
+    overall_eval_acc_numerator = 0
+    eval_sum_loss = 0
+    total_instances = len(eval_data)
 
-        for _, CSSs, sent_char_lens, mention_poses, quote_idxes, _, true_index, category in eval_data:
+    if MODEL_NAME == 'CSN':
+        for _, CSSs, sent_char_lens, mention_poses, quote_idxes, _, true_index, _, name_list_index in eval_data:
             with torch.no_grad():
-                features = convert_examples_to_features(examples=CSSs, tokenizer=tokenizer)
+                features = convert_examples_to_features(
+                    examples=CSSs, tokenizer=tokenizer)
                 scores, scores_false, scores_true = model(
-                    features, sent_char_lens, mention_poses, quote_idxes, true_index, device)
+                    features, sent_char_lens, mention_poses, quote_idxes, true_index, DEVICE)
                 loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(
-                    0), torch.tensor(-1.0).unsqueeze(0).to(device)) for x, y in zip(scores_false, scores_true)]
+                    0), torch.tensor(-1.0).unsqueeze(0).to(DEVICE)) for x, y in zip(scores_false, scores_true)]
 
             eval_sum_loss += sum(x.item() for x in loss_list)
 
             # evaluate accuracy ------------------------------------------
             correct = 1 if scores.max(0)[1].item() == true_index else 0
             overall_eval_acc_numerator += correct
-
-        overall_eval_acc = overall_eval_acc_numerator / total_instances
-        eval_avg_loss = eval_sum_loss / total_instances
-
-        # logging ------------------------------------------
-        writer.add_scalar('Loss/' + subset_name, eval_avg_loss, epoch)
-        writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
-
-        logging.info(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-        print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-        print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
-
-        return overall_eval_acc, eval_avg_loss
 
     elif MODEL_NAME == 'KCSN':
-        overall_eval_acc_numerator = 0
-        eval_sum_loss = 0
-        total_instances = len(eval_data)
-
-        for _, CSSs, sent_char_lens, mention_poses, quote_idxes,  cut_css, _, true_index, category in eval_data:
+        for i, (_, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, _, true_index, _, name_list_index) in enumerate(eval_data):
             with torch.no_grad():
-                features, tokens_list = convert_examples_to_features(CSSs, tokenizer, is_Kfeatures=True)
-                scores, scores_false, scores_true = model(features, sent_char_lens, mention_poses, quote_idxes, true_index, device, tokens_list, cut_css)
-                loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(0), torch.tensor(-1.0).unsqueeze(0).to(device)) for x, y in zip(scores_false, scores_true)]
+                features, tokens_list = convert_examples_to_features(
+                    examples=CSSs, tokenizer=tokenizer, is_kfeatures=True)
+                scores, scores_false, scores_true = model(
+                    features, sent_char_lens, mention_poses, quote_idxes, true_index, DEVICE, tokens_list, cut_css)
+                if scores == '1':
+                    continue
+                loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(
+                    0), torch.tensor(-1.0).unsqueeze(0).to(DEVICE)) for x, y in zip(scores_false, scores_true)]
 
             eval_sum_loss += sum(x.item() for x in loss_list)
 
@@ -83,18 +72,18 @@ def eval(eval_data, subset_name, writer, epoch):
             correct = 1 if scores.max(0)[1].item() == true_index else 0
             overall_eval_acc_numerator += correct
 
-        overall_eval_acc = overall_eval_acc_numerator / total_instances
-        eval_avg_loss = eval_sum_loss / total_instances
+    overall_eval_acc = overall_eval_acc_numerator / total_instances
+    eval_avg_loss = eval_sum_loss / total_instances
 
-        # logging ------------------------------------------
-        writer.add_scalar('Loss/' + subset_name, eval_avg_loss, epoch)
-        writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
+    # logging ------------------------------------------
+    writer.add_scalar('Loss/' + subset_name, eval_avg_loss, epoch)
+    writer.add_scalar('Accuracy/' + subset_name, overall_eval_acc, epoch)
 
-        logging.info(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-        print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
-        print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
+    logging.info('%s_overall_acc: %.4f', subset_name, overall_eval_acc)
+    print(f"{subset_name}_overall_acc: {overall_eval_acc:.4f}")
+    print(f"{subset_name}_overall_loss: {eval_avg_loss:.4f}")
 
-        return overall_eval_acc, eval_avg_loss
+    return overall_eval_acc, eval_avg_loss
 
 
 if __name__ == '__main__':
@@ -117,63 +106,65 @@ if __name__ == '__main__':
     checkpoint_dir = args.checkpoint_dir
     LOG_FATH = args.training_logs
 
-    log_dir = os.path.join(LOG_FATH,
-                           datetime.datetime.now().strftime(TIMESTANP_FORMAT))
+    log_dir = os.path.join(
+        LOG_FATH, datetime.datetime.now().strftime(TIMESTANP_FORMAT))
 
     writer = SummaryWriter(log_dir=log_dir)
     logging_name = os.path.join(LOG_FATH, '/training_log.log')
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT,
                         datefmt=DATE_FORMAT, filename=logging_name)
 
-    # device -----------------------------------------------------
+    # DEVICE & alias to id ---------------------------------------
     print("---------------------------------------------------------")
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    print('device : ', device)
-    print('MODEL_NAME : ', MODEL_NAME)
-
-    # alias to id ------------------------------------------------
+    DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
     alias2id = get_alias2id(name_list_path)
 
-    # build data loaders ------------------------------------------
-    example_print = False
+    print('DEVICE : ', DEVICE)
+    print('MODEL_NAME : ', MODEL_NAME)
 
+    # build data loaders ------------------------------------------
     try:
         print('load_data_loader ----------------------------------------')
         train_data = load_data_loader(f'{SAVE_LOADER}/{MODEL_NAME}/train_data')
         dev_data = load_data_loader(f'{SAVE_LOADER}/{MODEL_NAME}/dev_data')
         test_data = load_data_loader(f'{SAVE_LOADER}/{MODEL_NAME}/test_data')
-        example_print = True
     except FileNotFoundError:
-        train_data = build_data_loader(
-            train_file, alias2id, args, save_filename=f'{SAVE_LOADER}/{MODEL_NAME}/train_data',
-            skip_only_one=True, MODEL_NAME=MODEL_NAME)
-        dev_data = build_data_loader(
-            dev_file, alias2id, args, save_filename=f'{SAVE_LOADER}/{MODEL_NAME}/dev_data', MODEL_NAME=MODEL_NAME)
-        test_data = build_data_loader(
-            test_file, alias2id, args, save_filename=f'{SAVE_LOADER}/{MODEL_NAME}/test_data', MODEL_NAME=MODEL_NAME)
-        print("---------------------------------------------------------")
+        train_data = build_data_loader(train_file, alias2id, args,
+                                       save_name=f'{SAVE_LOADER}/{MODEL_NAME}/train_data',
+                                       skip_only_one=True, model_name=MODEL_NAME)
+        dev_data = build_data_loader(dev_file, alias2id, args,
+                                     save_name=f'{SAVE_LOADER}/{MODEL_NAME}/dev_data',
+                                     model_name=MODEL_NAME)
+        test_data = build_data_loader(test_file, alias2id, args,
+                                      save_name=f'{SAVE_LOADER}/{MODEL_NAME}/test_data',
+                                      model_name=MODEL_NAME)
 
-    if example_print is not False:
-        print('DEV EXAMPLE : ')
-        dev_test_iter = iter(dev_data)
-        if MODEL_NAME == 'CSN':
-            _, CSSs, sent_char_lens, mention_poses, quote_idxes, one_hot_label, true_index, category = next(
-                dev_test_iter)
-        elif MODEL_NAME == 'KCSN':
-            _, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _ = next(
-                dev_test_iter)
-        print('- Candidate-specific segments : ', CSSs)
-        print('- Nearest mention positions : ', mention_poses)
-        print('TEST EXAMPLE : ')
-        test_test_iter = iter(test_data)
-        if MODEL_NAME == 'CSN':
-            _, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _ = next(
-                test_test_iter)
-        elif MODEL_NAME == 'KCSN':
-            _, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _ = next(
-                test_test_iter)
-        print('- Candidate-specific segments : ', CSSs)
-        print('- Nearest mention positions : ', mention_poses)
+    print("---------------------------------------------------------")
+    print('DEV EXAMPLE : ')
+    dev_test_iter = iter(dev_data)
+    if MODEL_NAME == 'CSN':
+        _, CSSs, _, mention_poses, _, _, _, _, name_list_index = next(
+            dev_test_iter)
+    elif MODEL_NAME == 'KCSN':
+        _, CSSs, _, mention_poses, _, _, _, _, _, name_list_index = next(
+            dev_test_iter)
+
+    print('- Candidate-specific segments : ', CSSs)
+    print('- Nearest mention positions : ', mention_poses)
+    print('- Name list index : ', name_list_index)
+
+    print('TEST EXAMPLE : ')
+    test_test_iter = iter(test_data)
+    if MODEL_NAME == 'CSN':
+        _, CSSs, _, mention_poses, _, _, _, _, name_list_index = next(
+            test_test_iter)
+    elif MODEL_NAME == 'KCSN':
+        _, CSSs, _, mention_poses, _, _, _, _, _, name_list_index = next(
+            test_test_iter)
+
+    print('- Candidate-specific segments : ', CSSs)
+    print('- Nearest mention positions : ', mention_poses)
+    print('- Name list index : ', name_list_index)
 
     print("---------------------------------------------------------")
     print("The number of training instances: " + str(len(train_data)))
@@ -191,7 +182,7 @@ if __name__ == '__main__':
     else:
         raise ValueError("Unknown model type...")
 
-    model = model.to(device)
+    model = model.to(DEVICE)
 
     # initialize optimizer -----------------------------------------
     if args.optimizer == 'sgd':
@@ -209,7 +200,6 @@ if __name__ == '__main__':
 
     # logging best
     best_overall_dev_acc = 0
-    best_latent_dev_acc = 0
     best_dev_loss = 0
     new_best = False
 
@@ -218,8 +208,9 @@ if __name__ == '__main__':
     backward_counter = 0
 
     # history_train_acc, history_train_loss 등 필요한 변수들을 정의
-    history_train_acc = list()
-    history_train_loss = list()
+    history_train_acc = []
+    history_train_loss = []
+    OOM_list = []
 
     # Load checkpoint if available -------------------------------
     start_epoch = 0
@@ -238,7 +229,6 @@ if __name__ == '__main__':
         print(f"Resuming training from epoch {start_epoch}")
 
     # start epoch -------------------------------------------------
-    OOM_list = list()
 
     if MODEL_NAME == 'CSN':
         for epoch in range(start_epoch, args.num_epochs):
@@ -249,20 +239,18 @@ if __name__ == '__main__':
             model.train()
             optimizer.zero_grad()
 
-            print('Epoch: %d' % (epoch + 1))
-            for i, (_, CSSs, sent_char_lens, mention_poses, quote_idxes, one_hot_label, true_index, _) in enumerate(tqdm(train_data)):
-
+            print(f'Epoch: {epoch + 1}')
+            for i, (_, CSSs, sent_char_lens, mention_poses, quote_idxes, _, true_index, _, _) in enumerate(tqdm(train_data)):
                 try:
                     features = convert_examples_to_features(
                         examples=CSSs, tokenizer=tokenizer)
                     scores, scores_false, scores_true = model(
-                        features, sent_char_lens, mention_poses, quote_idxes, true_index, device)
+                        features, sent_char_lens, mention_poses, quote_idxes, true_index, DEVICE)
 
                     # backward propagation and weights update
                     for x, y in zip(scores_false, scores_true):
                         # compute loss
-                        loss = loss_fn(x.unsqueeze(0), y.unsqueeze(
-                            0), torch.tensor(-1.0).unsqueeze(0).to(device))
+                        loss = loss_fn(x.unsqueeze(0), y.unsqueeze(0), torch.tensor(-1.0).unsqueeze(0).to(DEVICE))
                         train_loss += loss.item()
 
                         # backward propagation
@@ -284,30 +272,18 @@ if __name__ == '__main__':
                 except RuntimeError:
                     OOM_list.append([epoch+1, i])
 
+            save = os.path.join(LOG_FATH, f'{epoch}_.pth')
+            torch.save(model.state_dict(), save)
+            
             acc = acc_numerator / acc_denominator
             train_loss /= len(train_data)
-
-            # logging ------------------------------------------
-            writer.add_scalar('Loss/train', train_loss, epoch)
-            writer.add_scalar('Accuracy/train', acc, epoch)
-
-            logging.info(f'train_acc: {acc:.4f}')
-            print(f'train_acc: {acc:.4f}')
-            print(f'train_loss: {train_loss:.4f}')
-            print("---------------------------------------------------------")
-
-            history_train_acc.append(acc)
-            history_train_loss.append(train_loss)
-
-            # adjust learning rate after each epoch
-            logging.info(
-                f'Learning rate adjusted to: {adjust_learning_rate(optimizer, args.lr_decay)}')
 
             # Evaluation
             model.eval()
 
             # development stage ------------------------------------------
-            overall_dev_acc, dev_avg_loss = eval(dev_data, 'dev', writer, epoch)
+            overall_dev_acc, dev_avg_loss = eval(
+                dev_data, 'dev', writer, epoch)
 
             # save the model with best performance
             if overall_dev_acc > best_overall_dev_acc:
@@ -341,7 +317,23 @@ if __name__ == '__main__':
             if patience_counter > args.patience:
                 print("Early stopping...")
                 break
+
+            # logging ------------------------------------------
             print('------------------------------------------------------')
+            writer.add_scalar('Loss/train', train_loss, epoch)
+            writer.add_scalar('Accuracy/train', acc, epoch)
+
+            logging.info('train_acc: %.4f', acc)
+            print(f'train_acc: {acc:.4f}')
+            print(f'train_loss: {train_loss:.4f}')
+            print("---------------------------------------------------------")
+
+            history_train_acc.append(acc)
+            history_train_loss.append(train_loss)
+
+            # adjust learning rate after each epoch
+            logging.info('Learning rate adjusted to: %s',
+                         adjust_learning_rate(optimizer, args.lr_decay))
 
         print('best_overall_dev_acc :', best_overall_dev_acc)
         print('overall_test_acc : ', overall_test_acc)
@@ -363,20 +355,20 @@ if __name__ == '__main__':
             model.train()
             optimizer.zero_grad()
 
-            print('Epoch: %d' % (epoch + 1))
-            for i, (_, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _) in enumerate(tqdm(train_data)):
+            print(f'Epoch: {epoch + 1}')
+            for i, (_, CSSs, sent_char_lens, mention_poses, quote_idxes, cut_css, one_hot_label, true_index, _, name_list_index) in enumerate(tqdm(train_data)):
 
                 try:
                     features, tokens_list = convert_examples_to_features(
-                        examples=CSSs, tokenizer=tokenizer, is_Kfeatures=True)
+                        examples=CSSs, tokenizer=tokenizer, is_kfeatures=True)
                     scores, scores_false, scores_true = model(
-                        features, sent_char_lens, mention_poses, quote_idxes, true_index, device, tokens_list, cut_css)
+                        features, sent_char_lens, mention_poses, quote_idxes, true_index, DEVICE, tokens_list, cut_css)
 
                     # backward propagation and weights update
                     for x, y in zip(scores_false, scores_true):
                         # compute loss
                         loss = loss_fn(x.unsqueeze(0), y.unsqueeze(
-                            0), torch.tensor(-1.0).unsqueeze(0).to(device))
+                            0), torch.tensor(-1.0).unsqueeze(0).to(DEVICE))
                         train_loss += loss.item()
 
                         # backward propagation
@@ -396,7 +388,13 @@ if __name__ == '__main__':
                     acc_denominator += 1
 
                 except RuntimeError:
-                    OOM_list.append([epoch+1, i])
+                    OOM_list.append([epoch+1, i, 'R'])
+
+                except TypeError:
+                    OOM_list.append([epoch+1, i, 'T'])
+
+            save = os.path.join(LOG_FATH, f'{epoch}_.pth')
+            torch.save(model.state_dict(), save)
 
             acc = acc_numerator / acc_denominator
             train_loss /= len(train_data)
@@ -405,7 +403,7 @@ if __name__ == '__main__':
             writer.add_scalar('Loss/train', train_loss, epoch)
             writer.add_scalar('Accuracy/train', acc, epoch)
 
-            logging.info(f'train_acc: {acc:.4f}')
+            logging.info('train_acc: %.4f', acc)
             print(f'train_acc: {acc:.4f}')
             print(f'train_loss: {train_loss:.4f}')
             print("---------------------------------------------------------")
@@ -414,14 +412,15 @@ if __name__ == '__main__':
             history_train_loss.append(train_loss)
 
             # adjust learning rate after each epoch
-            logging.info(
-                f'Learning rate adjusted to: {adjust_learning_rate(optimizer, args.lr_decay)}')
+            logging.info('Learning rate adjusted to: %s',
+                         adjust_learning_rate(optimizer, args.lr_decay))
 
             # Evaluation
             model.eval()
 
             # development stage ------------------------------------------
-            overall_dev_acc, dev_avg_loss = eval(dev_data, 'dev', writer, epoch)
+            overall_dev_acc, dev_avg_loss = eval(
+                dev_data, 'dev', writer, epoch)
 
             # save the model with best performance
             if overall_dev_acc > best_overall_dev_acc:
@@ -436,7 +435,8 @@ if __name__ == '__main__':
             # only save the model which outperforms the former best on development set
             if new_best:
                 # test stage
-                overall_test_acc, test_avg_loss = eval(test_data, 'test', writer, epoch)
+                overall_test_acc, test_avg_loss = eval(
+                    test_data, 'test', writer, epoch)
                 try:
                     info_json = {"epoch": epoch}
                     save_checkpoint({

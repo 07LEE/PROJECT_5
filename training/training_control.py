@@ -43,15 +43,3 @@ def save_checkpoint(state, info_json, dirname) -> None:
     with open(os.path.join(dirname, 'info.json'), 'w', encoding='utf-8') as f:
         json.dump(info_json, f, indent=4)
     torch.save(state, os.path.join(dirname, 'model.ckpt'))
-
-def save_spare(name: str, epoch, model) -> None:
-    """
-    Save a temporary checkpoint during training.
-
-    Args:
-        name (str): Name or identifier for the saved checkpoint.
-        epoch (int): Current training epoch.
-        model (torch.nn.Module): The PyTorch model whose state will be saved.
-    """
-    save = os.path.join(LOG_FATH, f'{epoch}_{name}.pth')
-    torch.save(model.state_dict(), save)
