@@ -1,7 +1,7 @@
+import json
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import event
-import json
 
 from .models import NameList, Title, Name, Story
 
@@ -18,6 +18,9 @@ session = Session()
 # 새로운 NameList 객체가 추가될 때 호출되는 이벤트 핸들러
 @event.listens_for(NameList, 'before_insert')
 def receive_before_insert(mapper, connection, target):
+    """
+    
+    """
     session = Session.object_session(target)
     if session is not None:
         # 현재 title_id에 해당하는 가장 높은 id 값 조회

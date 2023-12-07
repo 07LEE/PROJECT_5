@@ -4,6 +4,9 @@ Module: bert_features_generator
 This module provides functions to generate BERT features from textual segments.
 """
 import re
+from .arguments import get_train_args
+
+args = get_train_args()
 
 class InputFeatures:
     """
@@ -57,16 +60,15 @@ class InputFeatures:
         """
         return self.input_type_ids
 
-def convert_examples_to_features(examples, tokenizer, is_kfeatures=False):
+def convert_examples_to_features(examples, tokenizer):
     """
     Convert textual segments into word IDs.
 
-    params
+    params:
         examples: the raw textual segments in a list.
         tokenizer: a BERT Tokenizer object.
-        is_kfeatures: a flag to indicate whether to return tokens_list or not.
 
-    return
+    return:
         features: BERT features in a list.
         tokens_list: a list of tokens (only when is_kfeatures is True).
     """
@@ -74,7 +76,7 @@ def convert_examples_to_features(examples, tokenizer, is_kfeatures=False):
     tokens_list = []
 
     for (ex_index, example) in enumerate(examples):
-        if is_kfeatures:
+        if args.model_name == 'KCSN':
             tokens = tokenizer.tokenize(example)
             tokens_list.append(tokens)
         else:
@@ -102,6 +104,4 @@ def convert_examples_to_features(examples, tokenizer, is_kfeatures=False):
                 input_mask=input_mask,
                 input_type_ids=input_type_ids))
 
-    if is_kfeatures is True:
-        return features, tokens_list
-    return features
+    return features, tokens_list

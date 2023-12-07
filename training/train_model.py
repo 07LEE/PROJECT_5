@@ -25,7 +25,6 @@ class SeqPooling(nn.Module):
 
     Can do max-pooling, mean-pooling and attentive-pooling on a list of sequences of different lengths.
     """
-
     def __init__(self, pooling_type, hidden_dim):
         super(SeqPooling, self).__init__()
         self.pooling_type = pooling_type
@@ -49,7 +48,6 @@ class SeqPooling(nn.Module):
         pooling_fn = {'max_pooling': self.max_pool,
                       'mean_pooling': self.mean_pool,
                       'attentive_pooling': self.attn_pool}
-
         pooled_seq = [pooling_fn[self.pooling_type](seq) for seq in batch_seq]
         return torch.stack(pooled_seq, dim=0)
 
@@ -60,7 +58,6 @@ class MLP_Scorer(nn.Module):
 
     A perceptron with two layers.
     """
-
     def __init__(self, args, classifier_input_size):
         super(MLP_Scorer, self).__init__()
         self.scorer = nn.ModuleList()
@@ -82,7 +79,6 @@ class CSN(nn.Module):
 
     It's built on BERT with an MLP and other simple components.
     """
-
     def __init__(self, args):
         super(CSN, self).__init__()
         self.args = args
@@ -93,7 +89,7 @@ class CSN(nn.Module):
             args, self.bert_model.config.hidden_size * 3)
         self.dropout = nn.Dropout(args.dropout)
 
-    def forward(self, features, sent_char_lens, mention_poses, quote_idxes, true_index, device):
+    def forward(self, features, sent_char_lens, mention_poses, quote_idxes, true_index, device, tokens_list, cut_css):
         """
         params
             features: the candidate-specific segments (CSS) converted into the form of BERT input.  
@@ -185,7 +181,7 @@ class KCSN(nn.Module):
         for i, (cdd_sent_char_lens, cdd_mention_pos, cdd_quote_idx) in enumerate(zip(sent_char_lens, mention_poses, quote_idxes)):
             unk_loc += 1
             bert_output = self.bert_model(torch.tensor([features[i].input_ids], dtype=torch.long).to(device), token_type_ids=None,
-                                          attention_mask=torch.tensor([features[i].input_mask], dtype=torch.long).to(device))
+                            attention_mask=torch.tensor([features[i].input_mask], dtype=torch.long).to(device))
 
             modified_list = [s.replace('#', '') for s in tokens_list[i]]
 
@@ -204,7 +200,6 @@ class KCSN(nn.Module):
                     str.maketrans(replace_dict))
 
                 pattern = re.compile(rf'[{string_processing}]')
-
                 cnt = 1
 
                 if num_check == 1000:
@@ -299,17 +294,8 @@ class KCSN(nn.Module):
             else:
                 ctx_hid.append(CSS_hid[accum_char_len[1]:])
 
-            cdd_mention_pos_bert = (
-                cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
-            cdd_hid.append(
-                CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
-
-        # qs hid 가 비어있을 경우, 에러 방지용
-        if qs_hid == []:
-            scores = '1'
-            scores_false = 1
-            scores_true = 1
-            return scores, scores_false, scores_true
+            cdd_mention_pos_bert = (cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
+            cdd_hid.append(CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
 
         # pooling
         qs_rep = self.pooling(qs_hid)

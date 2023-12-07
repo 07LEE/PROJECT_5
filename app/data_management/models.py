@@ -4,7 +4,6 @@ from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
-
 class Title(Base):
     __tablename__ = 'titles'
     id = Column(Integer, Sequence('title_id_seq'), primary_key=True,
@@ -12,7 +11,6 @@ class Title(Base):
     title_text = Column(String, unique=True, nullable=False)
     stories = relationship('Story', back_populates='title')
     namelists = relationship('NameList', back_populates='title')
-
 
 class NameList(Base):
     __tablename__ = 'namelists'
@@ -23,7 +21,6 @@ class NameList(Base):
     title_id = Column(Integer, ForeignKey('titles.id'))
     title = relationship('Title', back_populates='namelists')
 
-
 class Name(Base):
     __tablename__ = 'names'
     id = Column(Integer, Sequence('name_id_seq'), primary_key=True,
@@ -31,7 +28,6 @@ class Name(Base):
     name = Column(String(50))
     namelist_id = Column(Integer, ForeignKey('namelists.id'))
     namelist = relationship("NameList", back_populates="names")
-
 
 class Story(Base):
     __tablename__ = 'stories'

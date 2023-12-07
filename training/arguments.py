@@ -1,7 +1,5 @@
 # Pre-set arguments
 from argparse import ArgumentParser
-import sys
-
 
 def get_train_args():
     """
@@ -18,7 +16,7 @@ def get_train_args():
     LOG_FATH = 'training/training_logs'
 
     # Parsing arguments
-    parser.add_argument('--model_name', type=str, default='CSN')
+    parser.add_argument('--model_name', type=str, default='KCSN')
 
     # Model
     parser.add_argument('--pooling_type', type=str, default='max_pooling')
@@ -26,8 +24,7 @@ def get_train_args():
     parser.add_argument('--nonlinear_type', type=str, default='tanh')
 
     # BERT
-    parser.add_argument('--bert_pretrained_dir', type=str,
-                        default=BERT_PRETRAINED_DIR)
+    parser.add_argument('--bert_pretrained_dir', type=str,default=BERT_PRETRAINED_DIR)
 
     # Training
     parser.add_argument('--margin', type=float, default=1.0)

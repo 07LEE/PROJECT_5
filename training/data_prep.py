@@ -1,7 +1,6 @@
 """
 Author: 
 """
-
 import copy
 from typing import Any
 from ckonlpy.tag import Twitter
@@ -12,19 +11,6 @@ from torch.utils.data import Dataset, DataLoader
 
 twitter = Twitter()
 
-
-def save_data(data, filename) -> None:
-    """
-    저장된 데이터를 지정된 파일에 저장합니다.
-
-    Parameters:
-        data: 저장할 데이터
-        filename: 저장할 파일의 경로 및 이름
-
-    Returns:
-        None
-    """
-    torch.save(data, filename)
 
 def load_data(filename) -> Any:
     """
@@ -37,6 +23,7 @@ def load_data(filename) -> Any:
         Any: 로드된 데이터
     """
     return torch.load(filename)
+
 
 def NML(seg_sents, mention_positions, ws):
     """
@@ -84,6 +71,37 @@ def NML(seg_sents, mention_positions, ws):
     return sorted_positions[0]
 
 
+def max_len_cut(seg_sents, mention_pos, max_len):
+    """
+    
+    """
+    sent_char_lens = [sum(len(word) for word in sent) for sent in seg_sents]
+    sum_char_len = sum(sent_char_lens)
+
+    running_cut_idx = [len(sent) - 1 for sent in seg_sents]
+
+    while sum_char_len > max_len:
+        max_len_sent_idx = max(
+            list(enumerate(sent_char_lens)), key=lambda x: x[1])[0]
+
+        if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] == mention_pos[1]:
+            running_cut_idx[max_len_sent_idx] -= 1
+
+        if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] < mention_pos[1]:
+            mention_pos[1] -= 1
+
+        reduced_char_len = len(
+            seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]])
+        sent_char_lens[max_len_sent_idx] -= reduced_char_len
+        sum_char_len -= reduced_char_len
+
+        del seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]]
+
+        running_cut_idx[max_len_sent_idx] -= 1
+
+    return seg_sents, mention_pos
+
+
 def seg_and_mention_location(raw_sents_in_list, alias2id):
     """
     Chinese word segmentation and candidate mention location.
@@ -117,7 +135,7 @@ def seg_and_mention_location(raw_sents_in_list, alias2id):
     return seg_sents, character_mention_poses, name_list_index
 
 
-def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
+def create_CSS(seg_sents, candidate_mention_poses, args):
     """
     Create candidate-specific segments for each candidate in an instance.
 
@@ -141,125 +159,22 @@ def create_CSS(seg_sents, candidate_mention_poses, ws, max_len):
         many_quote_idx: the sentence-level index of quote sentence in CSS.
 
     """
+    ws = args.ws
+    max_len = args.length_limit
+    model_name = args.model_name
 
     assert len(seg_sents) == ws * 2 + 1
 
-    def max_len_cut(seg_sents, mention_pos):
-        """
-        Cut the CSS of each candidate to fit the maximum length limitation.
-
-        params
-            seg_sents: the segmented sentences involved in the CSS of a candidate.
-            mention_pos: the position of the mention of the candidate in the CSS.
-
-        return
-            seg_sents: ... after truncated.
-            mention_pos: ... after truncated.
-        """
-        sent_char_lens = [sum(len(word) for word in sent)
-                          for sent in seg_sents]
-        sum_char_len = sum(sent_char_lens)
-
-        running_cut_idx = [len(sent) - 1 for sent in seg_sents]
-
-        while sum_char_len > max_len:
-            max_len_sent_idx = max(list(enumerate(sent_char_lens)), key=lambda x: x[1])[0]
-
-            if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] == mention_pos[1]:
-                running_cut_idx[max_len_sent_idx] -= 1
-
-            if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] < mention_pos[1]:
-                mention_pos[1] -= 1
-
-            reduced_char_len = len(
-                seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]])
-            sent_char_lens[max_len_sent_idx] -= reduced_char_len
-            sum_char_len -= reduced_char_len
-
-            del seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]]
-
-            running_cut_idx[max_len_sent_idx] -= 1
-
-        return seg_sents, mention_pos
-
-    many_CSSs = []
-    many_sent_char_lens = []
-    many_mention_poses = []
-    many_quote_idxes = []
-
-    for candidate_idx in candidate_mention_poses.keys():
-
-        nearest_pos = NML(
-            seg_sents, candidate_mention_poses[candidate_idx], ws)
-        if nearest_pos[0] <= ws:
-            CSS = copy.deepcopy(seg_sents[nearest_pos[0]:ws + 1])
-            mention_pos = [0, nearest_pos[1]]
-            quote_idx = ws - nearest_pos[0]
-        else:
-            CSS = copy.deepcopy(seg_sents[ws:nearest_pos[0] + 1])
-            mention_pos = [nearest_pos[0] - ws, nearest_pos[1]]
-            quote_idx = 0
-
-        cut_CSS, mention_pos = max_len_cut(CSS, mention_pos)
-
-        sent_char_lens = [sum(len(word) for word in sent) for sent in cut_CSS]
-
-        mention_pos_left = sum(sent_char_lens[:mention_pos[0]]) + sum(
-            len(x) for x in cut_CSS[mention_pos[0]][:mention_pos[1]])
-        mention_pos_right = mention_pos_left + \
-            len(cut_CSS[mention_pos[0]][mention_pos[1]])
-        mention_pos = (mention_pos[0], mention_pos_left, mention_pos_right)
-        cat_CSS = ''.join([''.join(sent) for sent in cut_CSS])
-
-        many_CSSs.append(cat_CSS)
-        many_sent_char_lens.append(sent_char_lens)
-        many_mention_poses.append(mention_pos)
-        many_quote_idxes.append(quote_idx)
-
-    return many_CSSs, many_sent_char_lens, many_mention_poses, many_quote_idxes
-
-
-def create_KCSS(seg_sents, candidate_mention_poses, ws, max_len):
-    assert len(seg_sents) == ws * 2 + 1
-
-    def kmax_len_cut(seg_sents, mention_pos):
-        sent_char_lens = [sum(len(word) for word in sent)
-                          for sent in seg_sents]
-        sum_char_len = sum(sent_char_lens)
-
-        running_cut_idx = [len(sent) - 1 for sent in seg_sents]
-
-        while sum_char_len > max_len:
-            max_len_sent_idx = max(
-                list(enumerate(sent_char_lens)), key=lambda x: x[1])[0]
-
-            if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] == mention_pos[1]:
-                running_cut_idx[max_len_sent_idx] -= 1
-
-            if max_len_sent_idx == mention_pos[0] and running_cut_idx[max_len_sent_idx] < mention_pos[1]:
-                mention_pos[1] -= 1
-
-            reduced_char_len = len(
-                seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]])
-            sent_char_lens[max_len_sent_idx] -= reduced_char_len
-            sum_char_len -= reduced_char_len
-
-            del seg_sents[max_len_sent_idx][running_cut_idx[max_len_sent_idx]]
-
-            running_cut_idx[max_len_sent_idx] -= 1
-
-        return seg_sents, mention_pos
-
-    many_CSSs = []
+    many_css = []
     many_sent_char_lens = []
     many_mention_poses = []
     many_quote_idxes = []
     many_cut_css = []
 
     for candidate_idx in candidate_mention_poses.keys():
-
         nearest_pos = NML(
             seg_sents, candidate_mention_poses[candidate_idx], ws)
+
         if nearest_pos[0] <= ws:
             CSS = copy.deepcopy(seg_sents[nearest_pos[0]:ws + 1])
             mention_pos = [0, nearest_pos[1]]
@@ -269,32 +184,34 @@ def create_KCSS(seg_sents, candidate_mention_poses, ws, max_len):
             mention_pos = [nearest_pos[0] - ws, nearest_pos[1]]
             quote_idx = 0
 
-        cut_CSS, mention_pos = kmax_len_cut(CSS, mention_pos)
-
+        cut_CSS, mention_pos = max_len_cut(CSS, mention_pos, max_len)
         sent_char_lens = [sum(len(word) for word in sent) for sent in cut_CSS]
-
         mention_pos_left = sum(sent_char_lens[:mention_pos[0]]) + sum(
             len(x) for x in cut_CSS[mention_pos[0]][:mention_pos[1]])
         mention_pos_right = mention_pos_left + \
             len(cut_CSS[mention_pos[0]][mention_pos[1]])
-        mention_pos = (mention_pos[0], mention_pos_left,
-                       mention_pos_right, mention_pos[1])
-        cat_CSS = ' '.join([' '.join(sent) for sent in cut_CSS])
 
-        many_CSSs.append(cat_CSS)
+        if model_name == 'CSN':
+            mention_pos = (mention_pos[0], mention_pos_left, mention_pos_right)
+            cat_CSS = ''.join([''.join(sent) for sent in cut_CSS])
+        elif model_name == 'KCSN':
+            mention_pos = (mention_pos[0], mention_pos_left,
+                           mention_pos_right, mention_pos[1])
+            cat_CSS = ' '.join([' '.join(sent) for sent in cut_CSS])
+
+        many_css.append(cat_CSS)
         many_sent_char_lens.append(sent_char_lens)
         many_mention_poses.append(mention_pos)
         many_quote_idxes.append(quote_idx)
         many_cut_css.append(cut_CSS)
 
-    return many_CSSs, many_sent_char_lens, many_mention_poses, many_quote_idxes, many_cut_css
+    return many_css, many_sent_char_lens, many_mention_poses, many_quote_idxes, many_cut_css
 
 
 class ISDataset(Dataset):
     """
     Dataset subclass for Identifying speaker.
     """
-
     def __init__(self, data_list):
         super(ISDataset, self).__init__()
         self.data = data_list
@@ -306,7 +223,7 @@ class ISDataset(Dataset):
         return self.data[idx]
 
 
-def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_name=None, model_name=None) -> DataLoader:
+def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_name=None) -> DataLoader:
     """
     Build the dataloader for training.
 
@@ -362,12 +279,8 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_name=
             if skip_only_one and len(candidate_mention_poses) == 1:
                 continue
 
-            if model_name == 'CSN':
-                css, sent_char_lens, mention_poses, quote_idxes = create_CSS(
-                    seg_sents, candidate_mention_poses, args.ws, args.length_limit)
-            elif model_name == 'KCSN':
-                css, sent_char_lens, mention_poses, quote_idxes, cut_css = create_KCSS(
-                    seg_sents, candidate_mention_poses, args.ws, args.length_limit)
+            css, sent_char_lens, mention_poses, quote_idxes, cut_css = create_CSS(
+                seg_sents, candidate_mention_poses, args)
 
             one_hot_label = [0 if character_idx != alias2id[speaker_name]
                              else 1 for character_idx in candidate_mention_poses.keys()]
@@ -375,18 +288,13 @@ def build_data_loader(data_file, alias2id, args, skip_only_one=False, save_name=
 
         if offset == 24:
             category = line.strip().split()[-1]
-
-            if model_name == 'CSN':
-                data_list.append((seg_sents, css, sent_char_lens, mention_poses,
-                                  quote_idxes, one_hot_label, true_index, category, name_list_index))
-            elif model_name == 'KCSN':
-                data_list.append((seg_sents, css, sent_char_lens, mention_poses, quote_idxes,
-                                 cut_css, one_hot_label, true_index, category, name_list_index))
+            data_list.append((seg_sents, css, sent_char_lens, mention_poses, quote_idxes,
+                              cut_css, one_hot_label, true_index, category, name_list_index))
 
     data_loader = DataLoader(ISDataset(data_list), batch_size=1, collate_fn=lambda x: x[0])
 
-    if save_name is True:
-        save_data(data_list, save_name)
+    if save_name is not None:
+        torch.save(data_list, save_name)
 
     return data_loader
 
