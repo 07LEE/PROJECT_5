@@ -1,3 +1,6 @@
+"""
+Author: 
+"""
 def print_not_instance(self, i: int):
     print(self.text[i]['title'])
     print(self.text[i]['instance_index'])

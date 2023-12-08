@@ -1,7 +1,10 @@
+"""
+Author: 
+"""
 import os
 import re
-import pandas as pd
 import json
+import pandas as pd
 import tqdm
 
 # Functions to preprocess each file
@@ -55,8 +58,7 @@ def preprocessing(text):
 # | Novel Name | Round | Round Name | Round Content (id preprocessed) | Character ids |
 
 file_path = './Novels_text/Labeled/'
-novdf = pd.DataFrame(
-    {'novtitle': [], 'r': [], 'rtitle': [], 'rcontent': [], 'ids': []})
+novdf = pd.DataFrame({'novtitle': [], 'r': [], 'rtitle': [], 'rcontent': [], 'ids': []})
 
 for filename in os.listdir(file_path):
     filepath = os.path.join(file_path, filename)
@@ -71,16 +73,15 @@ for filename in os.listdir(file_path):
                 content, id_ = link_to_id(preprocessing(f.read()))
 
                 # Create a new DataFrame for the current row
-                df = pd.DataFrame({'novtitle': [novtitle], 'r': [r], 'rtitle': [
-                                  rtitle], 'rcontent': [content], 'ids': [id_]})
+                df = pd.DataFrame({'novtitle': [novtitle], 'r': [r], 'rtitle': [rtitle],
+                                   'rcontent': [content], 'ids': [id_]})
 
                 # Concatenate the new DataFrame with the existing DataFrame
                 novdf = pd.concat([novdf, df], ignore_index=True)
                 novdf['r'] = novdf['r'].astype(int)
 
 # 소설 제목과 회차 순서대로 정렬 Sort in order of fiction titles and rounds
-novdf = novdf.sort_values(by=['novtitle', 'r'], ascending=[
-                          True, True]).reset_index(drop=True)
+novdf = novdf.sort_values(by=['novtitle', 'r'], ascending=[True, True]).reset_index(drop=True)
 novlist = list(set(novdf['novtitle']))
 
 print(novlist)
@@ -92,8 +93,10 @@ novdf
 def nov_concat(novdf):
     '''
     (ko) 소설 별 인물과 회차를 누적해서 데이터프레임으로 저장합니다.
-    각 회차의 구분을 위해 회차 간 구분자를 '\n***\n'으로 설정합니다. '***'은 하나의 회차 내에서도 장면 구분을 위해 쓰이는 구분자이므로, 이후 scene을 나눌 때 일괄적으로 처리할 수 있습니다. 
-    작가가 한 회차의 마지막 문장과 다음 회차의 첫 문장을 동일하게 반복하는 경우를 드물지 않게 볼 수 있습니다. 후작업에서 참고 바랍니다. 
+    각 회차의 구분을 위해 회차 간 구분자를 '\n***\n'으로 설정합니다.
+    '***'은 하나의 회차 내에서도 장면 구분을 위해 쓰이는 구분자이므로, 이후 scene을 나눌 때 일괄적으로 처리할 수 있습니다. 
+    작가가 한 회차의 마지막 문장과 다음 회차의 첫 문장을 동일하게 반복하는 경우를 드물지 않게 볼 수 있습니다.
+    후작업에서 참고 바랍니다. 
 
     (en) It accumulates characters and episodes by novel and stores them as data frames.
     Note that the delimiter between rounds to '\n***\n' to separate each round. 
@@ -119,8 +122,6 @@ accum_novdf
 # %%
 # Check Special Characters: To check quotes types
 # 특수 문자 확인: 인용문의 종류 체크
-
-
 def extract_special_characters(text):
     pattern = re.compile(r'[^\w\s|_|:|!|\.|?|…]')
     special_characters = list(set(re.findall(pattern, text)))

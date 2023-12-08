@@ -1,19 +1,14 @@
+"""
+Author: 
+"""
 import json
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy import event
 
-from .models import NameList, Title, Name, Story
-
 Base = declarative_base()
-
-# 데이터베이스 연결
 engine = create_engine('sqlite:///data/mydatabase.db', echo=False)
-
-# 세션 생성
 Session = sessionmaker(bind=engine)
-session = Session()
-
 
 # 새로운 NameList 객체가 추가될 때 호출되는 이벤트 핸들러
 @event.listens_for(NameList, 'before_insert')
@@ -32,7 +27,6 @@ def receive_before_insert(mapper, connection, target):
             target.id = 1
 
 
-# 함수들
 def add_namelist(new_name, name=False, gender=2, title_text=None):
     """
     name: 기존의 인물 사전에 있는 이름.
@@ -55,8 +49,7 @@ def add_namelist(new_name, name=False, gender=2, title_text=None):
 
             # title text 추가
             if title_text:
-                title = session.query(Title).filter_by(title_text=title_text)\
-                    .first()
+                title = session.query(Title).filter_by(title_text=title_text).first()
                 if title is None:
                     title = Title(title_text=title_text)
                     session.add(title)
@@ -73,8 +66,7 @@ def add_namelist(new_name, name=False, gender=2, title_text=None):
             new_namelist.names.append(new_name_obj)
 
             if title_text:
-                title = session.query(Title).filter_by(title_text=title_text)\
-                    .first()
+                title = session.query(Title).filter_by(title_text=title_text).first()
                 if title is None:
                     title = Title(title_text=title_text)
                     session.add(title)
@@ -107,8 +99,7 @@ def print_namelist(name):
             # 출력
             print("\nFiltered Data:")
             for data in filtered_data:
-                print(data.id, data.gender, [
-                      (name.id, name.name) for name in data.names])
+                print(data.id, data.gender, [(name.id, name.name) for name in data.names])
 
     except Exception as e:
         print(f"오류 발생: {e}")
@@ -139,8 +130,8 @@ def display_namelist(save=False):
 
             if save is True:
                 with open('formatted_namelist_data.json', 'w') as json_file:
-                    json.dump(formatted_namelist_dict, json_file,
-                              ensure_ascii=False, default=str, indent=4)
+                    json.dump(formatted_namelist_dict, json_file, ensure_ascii=False, default=str,
+                              indent=4)
 
     except Exception as e:
         print(f"오류 발생: {e}")
@@ -159,8 +150,7 @@ def json2db(file):
 
     for entry in data:
         # title을 Title 테이블에서 참조하는 형태로 수정
-        title = session.query(Title).filter_by(title_text=entry['title']) \
-            .first()
+        title = session.query(Title).filter_by(title_text=entry['title']).first()
         if not title:
             title = Title(title_text=entry['title'])
             session.add(title)
@@ -235,5 +225,4 @@ def show_table_info(table_name='all'):
                   f"Nullable: {column['nullable']}")
 
 
-# 테이블 생성
-Base.metadata.create_all(engine)
+

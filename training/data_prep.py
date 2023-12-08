@@ -124,11 +124,9 @@ def seg_and_mention_location(raw_sents_in_list, alias2id):
         for word_idx, word in enumerate(seg_sent):
             if word in alias2id:
                 if alias2id[word] in character_mention_poses:
-                    character_mention_poses[alias2id[word]].append(
-                        [sent_idx, word_idx])
+                    character_mention_poses[alias2id[word]].append([sent_idx, word_idx])
                 else:
-                    character_mention_poses[alias2id[word]] = [
-                        [sent_idx, word_idx]]
+                    character_mention_poses[alias2id[word]] = [[sent_idx, word_idx]]
         seg_sents.append(seg_sent)
     name_list_index = list(character_mention_poses.keys())
     # print(name_list_index)
@@ -172,8 +170,7 @@ def create_CSS(seg_sents, candidate_mention_poses, args):
     many_cut_css = []
 
     for candidate_idx in candidate_mention_poses.keys():
-        nearest_pos = NML(
-            seg_sents, candidate_mention_poses[candidate_idx], ws)
+        nearest_pos = NML(seg_sents, candidate_mention_poses[candidate_idx], ws)
 
         if nearest_pos[0] <= ws:
             CSS = copy.deepcopy(seg_sents[nearest_pos[0]:ws + 1])
@@ -188,15 +185,13 @@ def create_CSS(seg_sents, candidate_mention_poses, args):
         sent_char_lens = [sum(len(word) for word in sent) for sent in cut_CSS]
         mention_pos_left = sum(sent_char_lens[:mention_pos[0]]) + sum(
             len(x) for x in cut_CSS[mention_pos[0]][:mention_pos[1]])
-        mention_pos_right = mention_pos_left + \
-            len(cut_CSS[mention_pos[0]][mention_pos[1]])
+        mention_pos_right = mention_pos_left + len(cut_CSS[mention_pos[0]][mention_pos[1]])
 
         if model_name == 'CSN':
             mention_pos = (mention_pos[0], mention_pos_left, mention_pos_right)
             cat_CSS = ''.join([''.join(sent) for sent in cut_CSS])
         elif model_name == 'KCSN':
-            mention_pos = (mention_pos[0], mention_pos_left,
-                           mention_pos_right, mention_pos[1])
+            mention_pos = (mention_pos[0], mention_pos_left, mention_pos_right, mention_pos[1])
             cat_CSS = ' '.join([' '.join(sent) for sent in cut_CSS])
 
         many_css.append(cat_CSS)

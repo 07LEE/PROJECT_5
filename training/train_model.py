@@ -1,6 +1,7 @@
+"""
+Author: 
+"""
 import re
-
-# CSN module definition
 import torch.nn as nn
 import torch.nn.functional as functional
 import torch
@@ -11,8 +12,8 @@ def get_nonlinear(nonlinear):
     """
     Activation function.
     """
-    nonlinear_dict = {'relu': nn.ReLU(), 'tanh': nn.Tanh(
-    ), 'sigmoid': nn.Sigmoid(), 'softmax': nn.Softmax(dim=-1)}
+    nonlinear_dict = {'relu': nn.ReLU(), 'tanh': nn.Tanh(), 
+                      'sigmoid': nn.Sigmoid(), 'softmax': nn.Softmax(dim=-1)}
     try:
         return nonlinear_dict[nonlinear]
     except:
@@ -61,9 +62,7 @@ class MLP_Scorer(nn.Module):
     def __init__(self, args, classifier_input_size):
         super(MLP_Scorer, self).__init__()
         self.scorer = nn.ModuleList()
-
-        self.scorer.append(nn.Linear(classifier_input_size,
-                           args.classifier_intermediate_dim))
+        self.scorer.append(nn.Linear(classifier_input_size, args.classifier_intermediate_dim))
         self.scorer.append(nn.Linear(args.classifier_intermediate_dim, 1))
         self.nonlinear = get_nonlinear(args.nonlinear_type)
 
@@ -83,13 +82,11 @@ class CSN(nn.Module):
         super(CSN, self).__init__()
         self.args = args
         self.bert_model = AutoModel.from_pretrained(args.bert_pretrained_dir)
-        self.pooling = SeqPooling(
-            args.pooling_type, self.bert_model.config.hidden_size)
-        self.mlp_scorer = MLP_Scorer(
-            args, self.bert_model.config.hidden_size * 3)
+        self.pooling = SeqPooling(args.pooling_type, self.bert_model.config.hidden_size)
+        self.mlp_scorer = MLP_Scorer(args, self.bert_model.config.hidden_size * 3)
         self.dropout = nn.Dropout(args.dropout)
 
-    def forward(self, features, sent_char_lens, mention_poses, quote_idxes, true_index, device, tokens_list, cut_css):
+    def forward(self, features, sent_char_lens, mention_poses, quote_idxes, true_index, device, _, name_list_index):
         """
         params
             features: the candidate-specific segments (CSS) converted into the form of BERT input.  
@@ -109,20 +106,21 @@ class CSN(nn.Module):
         ctx_hid = []
         cdd_hid = []
 
-        for i, (cdd_sent_char_lens, cdd_mention_pos, cdd_quote_idx) in enumerate(zip(sent_char_lens, mention_poses, quote_idxes)):
+        for i, (cdd_sent_char_lens, cdd_mention_pos, cdd_quote_idx) in enumerate(
+            zip(sent_char_lens, mention_poses, quote_idxes)):
 
-            bert_output = self.bert_model(torch.tensor([features[i].input_ids], dtype=torch.long).to(device), token_type_ids=None,
-                                          attention_mask=torch.tensor([features[i].input_mask], dtype=torch.long).to(device))
+            bert_output = self.bert_model(
+                torch.tensor([features[i].input_ids], dtype= torch.long).to(device), 
+                token_type_ids=None, attention_mask=torch.tensor([features[i].input_mask],
+                                                                 dtype=torch.long).to(device))
 
             accum_char_len = [0]
 
             for sent_idx, char_len in enumerate(cdd_sent_char_lens):
                 accum_char_len.append(accum_char_len[-1] + char_len)
 
-            CSS_hid = bert_output['last_hidden_state'][0][1:sum(
-                cdd_sent_char_lens) + 1]
-            qs_hid.append(
-                CSS_hid[accum_char_len[cdd_quote_idx]:accum_char_len[cdd_quote_idx + 1]])
+            CSS_hid = bert_output['last_hidden_state'][0][1:sum(cdd_sent_char_lens) + 1]
+            qs_hid.append(CSS_hid[accum_char_len[cdd_quote_idx]:accum_char_len[cdd_quote_idx + 1]])
 
             if len(cdd_sent_char_lens) == 1:
                 ctx_hid.append(torch.zeros(1, CSS_hid.size(1)).to(device))
@@ -163,10 +161,8 @@ class KCSN(nn.Module):
         super(KCSN, self).__init__()
         self.args = args
         self.bert_model = AutoModel.from_pretrained(args.bert_pretrained_dir)
-        self.pooling = SeqPooling(
-            args.pooling_type, self.bert_model.config.hidden_size)
-        self.mlp_scorer = MLP_Scorer(
-            args, self.bert_model.config.hidden_size * 3)
+        self.pooling = SeqPooling(args.pooling_type, self.bert_model.config.hidden_size)
+        self.mlp_scorer = MLP_Scorer(args, self.bert_model.config.hidden_size * 3)
         self.dropout = nn.Dropout(args.dropout)
 
     def forward(self, features, sent_char_lens, mention_poses, quote_idxes, true_index, device, tokens_list, cut_css):
@@ -181,7 +177,7 @@ class KCSN(nn.Module):
         for i, (cdd_sent_char_lens, cdd_mention_pos, cdd_quote_idx) in enumerate(zip(sent_char_lens, mention_poses, quote_idxes)):
             unk_loc += 1
             bert_output = self.bert_model(torch.tensor([features[i].input_ids], dtype=torch.long).to(device), token_type_ids=None,
-                            attention_mask=torch.tensor([features[i].input_mask], dtype=torch.long).to(device))
+                                          attention_mask=torch.tensor([features[i].input_mask], dtype=torch.long).to(device))
 
             modified_list = [s.replace('#', '') for s in tokens_list[i]]
 
@@ -281,8 +277,8 @@ class KCSN(nn.Module):
                 cdd_mention_pos_bert_li.extend([cdd_mention_pos_unk[0], cdd_mention_pos_unk[0]+1])
             elif len(cdd_mention_pos_bert_li) != 2:
                 cdd_mention_pos_bert_li = []
-                cdd_mention_pos_bert_li.extend([int(cdd_mention_pos[1] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens])), int(
-                    cdd_mention_pos[2] * accum_char_len[-1]/sum(i for i in cdd_sent_char_lens))])
+                cdd_mention_pos_bert_li.extend(
+                    [int(cdd_mention_pos[1] * accum_char_len[-1]/sum([i for i in cdd_sent_char_lens])), int(cdd_mention_pos[2] * accum_char_len[-1]/sum(i for i in cdd_sent_char_lens))])
 
             if cdd_mention_pos_bert_li[0] == cdd_mention_pos_bert_li[1]:
                 cdd_mention_pos_bert_li[1] = cdd_mention_pos_bert_li[1]+1
@@ -294,7 +290,8 @@ class KCSN(nn.Module):
             else:
                 ctx_hid.append(CSS_hid[accum_char_len[1]:])
 
-            cdd_mention_pos_bert = (cdd_mention_pos[0], cdd_mention_pos_bert_li[0], cdd_mention_pos_bert_li[1])
+            cdd_mention_pos_bert = (cdd_mention_pos[0], cdd_mention_pos_bert_li[0],
+                                    cdd_mention_pos_bert_li[1])
             cdd_hid.append(CSS_hid[cdd_mention_pos_bert[1]:cdd_mention_pos_bert[2]])
 
         # pooling
@@ -314,7 +311,8 @@ class KCSN(nn.Module):
         for i in unk_loc_li:
             new_element = torch.tensor([-0.9000], requires_grad=True)
             index_to_insert = i-1
-            scores = torch.cat((scores[:index_to_insert], new_element, scores[index_to_insert:]), dim=0)
+            scores = torch.cat((scores[:index_to_insert], new_element, scores[index_to_insert:]),
+                               dim=0)
 
         scores_false = [scores[i] for i in range(scores.size(0)) if i != true_index]
         scores_true = [scores[true_index] for i in range(scores.size(0) - 1)]

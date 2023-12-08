@@ -6,12 +6,11 @@ model checkpoints during training.
 
 Author: 
 """
-
 import os
 import json
 import torch
 
-from training.arguments import get_train_args
+from arguments import get_train_args
 
 args = get_train_args()
 LOG_FATH = args.training_logs

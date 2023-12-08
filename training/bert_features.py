@@ -4,7 +4,7 @@ Module: bert_features_generator
 This module provides functions to generate BERT features from textual segments.
 """
 import re
-from .arguments import get_train_args
+from arguments import get_train_args
 
 args = get_train_args()
 

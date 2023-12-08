@@ -30,3 +30,6 @@ data_loader
 data/json
 checkpoint
 *.pth
+
+# 데이터베이스 파일 제외
+*.db

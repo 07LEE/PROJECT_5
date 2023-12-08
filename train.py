@@ -1,3 +1,6 @@
+"""
+Author: 
+"""
 # %%
 import datetime
 import logging
@@ -20,15 +23,16 @@ from training.training_control import adjust_learning_rate, save_checkpoint
 warnings.filterwarnings(action='ignore')
 
 def run():
+    """Just Run"""
     # Settings
-    LOG_FORMAT = "%(asctime)s [%(levelname)s]: %(message)s"
-    DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-    TIMESTANP_FORMAT = '%Y%m%d-%H%M%S'
-    SAVE_LOADER = 'training/data_loader'
+    log_format = "%(asctime)s [%(levelname)s]: %(message)s"
+    data_format = '%Y-%m-%d %H:%M:%S'
+    timestamp_format = '%Y%m%d-%H%M%S'
+    save_loader = 'training/data_loader'
 
     # args & data path
     args = get_train_args()
-    MODEL_NAME = args.model_name
+    model_name = args.model_name
     train_file = args.train_file
     dev_file = args.dev_file
     test_file = args.test_file
@@ -36,15 +40,14 @@ def run():
 
     # checkpoint & logging
     checkpoint_dir = args.checkpoint_dir
-    LOG_FATH = args.training_logs
+    log_fath = args.training_logs
 
-    log_dir = os.path.join(
-        LOG_FATH, datetime.datetime.now().strftime(TIMESTANP_FORMAT))
+    log_dir = os.path.join(log_fath, datetime.datetime.now().strftime(timestamp_format))
 
     writer = SummaryWriter(log_dir=log_dir)
-    logging_name = os.path.join(LOG_FATH, '/training_log.log')
-    logging.basicConfig(level=logging.INFO, format=LOG_FORMAT,
-                        datefmt=DATE_FORMAT, filename=logging_name)
+    logging_name = os.path.join(log_fath, '/training_log.log')
+    logging.basicConfig(level=logging.INFO, format=log_format,
+                        datefmt=data_format, filename=logging_name)
 
     # DEVICE & alias to id ---------------------------------------
     print("---------------------------------------------------------")
@@ -52,38 +55,38 @@ def run():
     alias2id = get_alias2id(name_list_path)
 
     print('DEVICE : ', device)
-    print('MODEL_NAME : ', MODEL_NAME)
+    print('MODEL_NAME : ', model_name)
 
     # build data loaders ------------------------------------------
     try:
         print('load data loader ----------------------------------------')
-        train_data = load_data_loader(f'{SAVE_LOADER}/train_data')
-        dev_data = load_data_loader(f'{SAVE_LOADER}/dev_data')
-        test_data = load_data_loader(f'{SAVE_LOADER}/test_data')
+        train_data = load_data_loader(f'{save_loader}/train_data')
+        dev_data = load_data_loader(f'{save_loader}/dev_data')
+        test_data = load_data_loader(f'{save_loader}/test_data')
     except FileNotFoundError:
         print('build data loader ----------------------------------------')
         train_data = build_data_loader(train_file, alias2id, args,
-                                       save_name=f'{SAVE_LOADER}/train_data',
+                                       save_name=f'{save_loader}/train_data',
                                        skip_only_one=True)
         dev_data = build_data_loader(dev_file, alias2id, args,
-                                     save_name=f'{SAVE_LOADER}/dev_data',)
+                                     save_name=f'{save_loader}/dev_data',)
         test_data = build_data_loader(test_file, alias2id, args,
-                                      save_name=f'{SAVE_LOADER}/test_data')
+                                      save_name=f'{save_loader}/test_data')
 
     print("---------------------------------------------------------")
     print('DEV EXAMPLE : ')
     dev_test_iter = iter(dev_data)
-    _, CSSs, _, mention_poses, _, _, _, _, _, name_list_index = next(
+    _, css, _, mention_poses, _, _, _, _, _, name_list_index = next(
         dev_test_iter)
-    print('- Candidate-specific segments : ', CSSs)
+    print('- Candidate-specific segments : ', css)
     print('- Nearest mention positions : ', mention_poses)
     print('- Name list index : ', name_list_index)
 
     print('TEST EXAMPLE : ')
     test_test_iter = iter(test_data)
-    _, CSSs, _, mention_poses, _, _, _, _, _, name_list_index = next(
+    _, css, _, mention_poses, _, _, _, _, _, name_list_index = next(
         test_test_iter)
-    print('- Candidate-specific segments : ', CSSs)
+    print('- Candidate-specific segments : ', css)
     print('- Nearest mention positions : ', mention_poses)
     print('- Name list index : ', name_list_index)
 
@@ -96,9 +99,9 @@ def run():
     # initialize model ---------------------------------------------
     tokenizer = AutoTokenizer.from_pretrained(args.bert_pretrained_dir)
 
-    if MODEL_NAME == 'KCSN':
+    if model_name == 'KCSN':
         model = KCSN(args)
-    elif MODEL_NAME == 'CSN':
+    elif model_name == 'CSN':
         model = CSN(args)
     else:
         raise ValueError("Unknown model type...")
@@ -133,7 +136,7 @@ def run():
     history_train_loss = []
     history_test_acc = []
     history_test_loss = []
-    OOM_list = []
+    oom_list = []
 
     # Load checkpoint if available -------------------------------
     start_epoch = 0
@@ -162,7 +165,7 @@ def run():
 
         print(f'Epoch: {epoch + 1}')
         for i, (_, css, sent_char_lens, mention_poses, quote_idxes, cut_css, _,
-                true_index, _, name_list_index) in enumerate(tqdm(train_data)):
+                true_index, _, _) in enumerate(tqdm(train_data)):
             try:
                 features, tokens_list = convert_examples_to_features(
                     examples=css, tokenizer=tokenizer)
@@ -192,7 +195,7 @@ def run():
                 acc_denominator += 1
 
             except (RuntimeError, TypeError) as e:
-                OOM_list.append([epoch+1, i, f'{e}', 'train'])
+                oom_list.append([epoch+1, i, f'{e}', 'train'])
 
         save_path = os.path.join(checkpoint_dir, f'{epoch}_model.pth')
         torch.save(model.state_dict(), save_path)
@@ -244,9 +247,8 @@ def run():
                             examples=css, tokenizer=tokenizer)
                         scores, scores_false, scores_true = model(features, scl, mp, quote_idxes,
                                                                 true_index, device, tokens_list, cc)
-                        loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(0),torch.tensor(
-                            -1.0).unsqueeze(0).to(device)) for x, y in zip(scores_false,
-                                                                           scores_true)]
+                        loss_list = [loss_fn(x.unsqueeze(0), y.unsqueeze(0),torch.tensor(-1.0
+                            ).unsqueeze(0).to(device)) for x, y in zip(scores_false, scores_true)]
                     eval_sum_loss += sum(x.item() for x in loss_list)
 
                     # evaluate accuracy ------------------------------------------
@@ -254,7 +256,7 @@ def run():
                     overall_eval_acc_numerator += correct
 
                 except (RuntimeError, TypeError) as es:
-                    OOM_list.append([epoch+1, i, f'{es}', f'{subset_name}'])
+                    oom_list.append([epoch+1, i, f'{es}', f'{subset_name}'])
 
             overall_eval_acc = overall_eval_acc_numerator / total_instances
             eval_avg_loss = eval_sum_loss / total_instances
@@ -283,7 +285,7 @@ def run():
         test_acc, test_loss = eval(test_data, 'test', writer, epoch)
         history_test_acc.append(test_acc)
         history_test_loss.append(test_loss)
-        
+
         if test_acc > best_test_acc:
             best_test_acc = test_acc
             best_test_loss = test_loss
@@ -314,6 +316,12 @@ def run():
     save_path = os.path.join(checkpoint_dir, 'final_model.pth')
     torch.save(model.state_dict(), save_path)
     print(f"Final model saved to {save_path}")
+
+    # Error List 저장
+    texts = os.path.join(log_fath, 'oom_list.txt')
+    with open(texts, 'w', encoding='utf-8') as f:
+        for oom in oom_list:
+            f.write(f"{oom}\n")
 
     # 텐서보드 로그 폴더 닫기
     writer.close()
