@@ -16,6 +16,7 @@ dist/
 .idea/
 
 # 시스템 및 임시 파일 제외
+log
 *.log
 *.swp
 .DS_Store
