@@ -1,23 +1,28 @@
-"""
-Author: H6
-"""
-# %%
-# from sqlalchemy importString, ForeignKey,
-from sqlalchemy import create_engine, Column, Integer, Text, Sequence
-from sqlalchemy.orm import declarative_base, sessionmaker
-# from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, JSON, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
+from database import Base
 
-db_file_path = "mydatabase.db"
-engine = create_engine(f'sqlite:///{db_file_path}', echo=True)
-Base = declarative_base()
-Session = sessionmaker(engine)
-sess = Session()
 
-class Title(Base):
-    __tablename__ = 'titles'
-    id = Column(Integer, Sequence('title_id_seq'), primary_key=True, autoincrement=True)
-    title_text = Column('TITLE_TEXT', Text)
+class Novel(Base):
+    __tablename__ = "novels"
 
-Base.metadata.create_all(engine)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    novel_id = Column(Integer, nullable=False)
+    title = Column(String)
+    writer = Column(String)
+    genre = Column(String)
+    total_epi = Column(Integer)
+    labeled = Column(Boolean)
 
-# %%
+    episodes = relationship("Episode", back_populates="novel", lazy='joined')
+
+class Episode(Base):
+    __tablename__ = "episodes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    novel_id = Column(Integer, ForeignKey("novels.novel_id"), nullable=False)
+    epi_title = Column(String)
+    epi = Column(Integer)
+    contents = Column(JSON)
+
+    novel = relationship("Novel", back_populates="episodes")
