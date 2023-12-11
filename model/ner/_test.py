@@ -4,7 +4,7 @@ NER 모델 확인
 # %%
 import torch
 
-from ner_utils import show_tokens
+from .ner_utils import show_tokens
 
 def check(texts):
     """

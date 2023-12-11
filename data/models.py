@@ -16,6 +16,7 @@ class Novel(Base):
 
     episodes = relationship("Episode", back_populates="novel", lazy='joined')
 
+
 class Episode(Base):
     __tablename__ = "episodes"
 
@@ -26,3 +27,13 @@ class Episode(Base):
     contents = Column(JSON)
 
     novel = relationship("Novel", back_populates="episodes")
+
+
+class Characters(Base):
+    __tablename__ = "characters"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    novel_id = Column(Integer, ForeignKey("novels.novel_id"), nullable=False)
+    characters = Column(String)
+
+    novel = relationship("Novel", back_populates="")

@@ -5,11 +5,11 @@
 import torch
 from transformers import AutoTokenizer
 
-from arguments import get_train_args
-from bert_features import convert_examples_to_features
-from data_prep import build_data_loader
-from load_name_list import get_alias2id
-from train_model import KCSN
+from .arguments import get_train_args
+from .bert_features import convert_examples_to_features
+from .data_prep import build_data_loader
+from .load_name_list import get_alias2id
+from .train_model import KCSN
 
 def _check():
     """
@@ -18,7 +18,7 @@ def _check():
     check = 'test/test.txt'
 
     # 저장된 모델 상태 사전 로드 -------------------------------------------
-    model_state_dict = torch.load("test/final_model.pth")
+    model_state_dict = torch.load("test/model.pth")
     args = get_train_args()
     name_list_path = 'data/name_list.txt'
     alias2id = get_alias2id(name_list_path)

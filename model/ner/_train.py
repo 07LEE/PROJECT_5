@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 from transformers import AdamW, AutoTokenizer, BertForTokenClassification
 from sklearn.model_selection import train_test_split
 
-from arguments import get_train_args
-from ner_tokenize import ner_tokenizer, encode_tags, TokenDataset
+from .arguments import get_train_args
+from .ner_tokenize import ner_tokenizer, encode_tags, TokenDataset
 
 if __name__ == '__main__':
     # Args --------------------------------------------------

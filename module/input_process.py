@@ -3,8 +3,8 @@
 """
 from torch.utils.data import Dataset, DataLoader
 
-from ..model.find_speaker.data_prep import seg_and_mention_location, create_CSS, ISDataset
-from ..model.find_speaker.arguments import get_train_args
+from model.find_speaker.data_prep import seg_and_mention_location, create_CSS, ISDataset
+from model.find_speaker.arguments import get_train_args
 
 args = get_train_args()
 

@@ -13,12 +13,12 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
-from arguments import get_train_args
-from bert_features import convert_examples_to_features
-from data_prep import build_data_loader, load_data_loader
-from load_name_list import get_alias2id
-from train_model import CSN, KCSN
-from training_control import adjust_learning_rate, save_checkpoint
+from .arguments import get_train_args
+from .bert_features import convert_examples_to_features
+from .data_prep import build_data_loader, load_data_loader
+from .load_name_list import get_alias2id
+from .train_model import CSN, KCSN
+from .training_control import adjust_learning_rate, save_checkpoint
 
 warnings.filterwarnings(action='ignore')
 
