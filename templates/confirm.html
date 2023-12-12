@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="utf-8">
+    <title>Spakers in Text</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='css/put.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+</head>
+
+<body>
+    <div class="background">
+        <div class="header"><a href="/">
+            <span class="title">Nouvel : Novel for you</span></a></div>
+        <div class="empty"></div>
+        <div class="box">
+            <div class="subtitle">감지한 등장인물 리스트</div>
+            {% for line in name_list %}
+            <span>{{ line }}</span>
+            {% endfor %}
+            <!-- <div class="formbox">
+                <div class="mb-3">
+                    <label for="formFileSm" class="form-label">첨부파일 업로드 </label>
+                    <input class="form-control form-control-sm" id="formFileSm" type="file">
+                </div>
+            </div> -->
+            <div class="transformbox">
+                <button class="transformButton"><span>변환하기</span></button>
+            </div>
+        </div>
+        <div class="foot">
+            <div class="footer-text">
+                <span>고려대학교 지능정보 SW 아카데미 5조</span>
+            </div>
+        </div>
+</body>
+
+</html>

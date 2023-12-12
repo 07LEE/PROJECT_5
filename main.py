@@ -6,10 +6,13 @@ import os
 
 from fastapi import FastAPI, File, UploadFile, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from module.load_model import load_fs, load_ner
+from module.input_process import make_ner_input
+from module.ner_utils import make_name_list
+
 
 # 설정
 app = FastAPI()
@@ -30,19 +33,22 @@ current_datetime = datetime.now().strftime("%Y%m%d%H%M%S")
 new_filename = f"{current_datetime}.txt"
 text_file_path = os.path.join(UPLOAD_FOLDER, new_filename)
 
+
 @app.get("/", response_class=HTMLResponse)
 async def read_index(request: Request):
     """INDEX.HTML 화면"""
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 @app.get("/put.html", response_class=HTMLResponse)
 async def read_put(request: Request):
     """PUT.HTML 화면"""
     return templates.TemplateResponse("put.html", {"request": request})
 
+
 @app.post("/upload-and-redirect/", response_class=HTMLResponse)
 async def upload_and_show(request: Request, file: UploadFile = File(...)):
-    """파일을 업로드하고 show.html로 결과를 보여줍니다."""
+    """파일을 업로드하고 confirm.html로 결과를 보여줍니다."""
     # 파일 저장
     with open(text_file_path, "wb") as f:
         f.write(file.file.read())
@@ -51,17 +57,23 @@ async def upload_and_show(request: Request, file: UploadFile = File(...)):
     with open(text_file_path, "r", encoding="utf-8") as f:
         file_content = f.read()
 
-    return templates.TemplateResponse("show.html", {"request": request,
-                                                    "file_content": file_content})
+    content = make_ner_input(file_content)
+    name_list = make_name_list(content, checkpoint)
 
-@app.get("/show.html", response_class=HTMLResponse)
-async def read_show(request: Request):
-    """SHOW.HTML 화면"""
+    return templates.TemplateResponse("confirm.html", {
+        "request": request, "name_list": name_list})
+
+
+@app.get("/confirm.html", response_class=HTMLResponse)
+async def read_confirm(request: Request):
+    """confirm.HTML 화면"""
     with open(text_file_path, "r", encoding="utf-8") as f:
         file_content = f.read()
 
-    return templates.TemplateResponse("show.html", {"request": request,
-                                                    "file_content": file_content})
+    return templates.TemplateResponse("confirm.html", {
+        "request": request, "file_content": file_content
+    })
+
 
 @app.get("/success", response_class=HTMLResponse)
 async def success_page(request: Request):

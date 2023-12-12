@@ -6,24 +6,40 @@
     <meta charset="utf-8">
     <title>Spakers in Text</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/put.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9"
+        crossorigin="anonymous">
 </head>
 
 <body>
     <div class="background">
         <div class="header">
-            <span class="title">Nouvel : Novel for you</span>
+            <a href="/">
+                <span class="title">Nouvel : Novel for you</span>
+            </a>
         </div>
         <div class="empty"></div>
         <div class="box">
             <div class="subtitle">변환할 파일 업로드하기</div>
+            <div class="explain_box">
+                <span class="explain">발화자를 찾고 싶은 문서가 있는 txt 파일을 업로드해주세요.</span>
+            </div>
+            <!-- <input type="radio" class="btn-check" name="options" id="option1" autocomplete="off" value="writer">
+            <label class="btn btn-secondary" for="option1">작가(전문가)</label>
+            
+            <input type="radio" class="btn-check" name="options" id="option2" autocomplete="off" value="reader">
+            <label class="btn btn-secondary" for="option2">독자(이용자)</label>
+             -->
             <div class="body">
-                <!-- action 속성을 원하는 엔드포인트로 설정 -->
-                <form action="/upload-and-redirect/" method="post" enctype="multipart/form-data">
+                <form id="uploadForm" action="/upload-and-redirect/" method="post" enctype="multipart/form-data">
                     <div class="filebox">
                         <input class="upload-name" name="file" type="file">
                     </div>
                     <div class="transformbox">
-                        <button class="transformButton" type="submit">변환하기</button>
+                        <button class="transformButton" type="submit">
+                            <span>변환하기</span>
+                        </button>
                     </div>
                 </form>
             </div>
@@ -31,7 +47,7 @@
         <div class="foot">
             <div class="footer-text">
                 <span>고려대학교 지능정보 SW 아카데미 5조</span>
-            </div>  
+            </div>
         </div>
     </div>
 </body>

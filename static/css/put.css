@@ -1,3 +1,7 @@
+*{
+    font-family: Noto Sans KR;
+}
+
 .background {
 position: absolute;
 width: 100%;
@@ -57,7 +61,25 @@ background: linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 
     margin-bottom:100px;
 }
 
-.filebox .upload-name {
+.formbox{
+    position:relative;
+    width:80%;
+    justify-content:center;
+    margin:0 auto;  
+}
+
+.form-label{
+    position: relative;
+    color: black;
+    text-align: center;
+    font-size: 16px;
+    font-family: Noto Sans KR;
+    font-weight: 400;
+    word-wrap: break-word;
+    margin-bottom:100px;
+}
+
+.upload-name {
     display: inline-block;
     height: 40px;
     padding: 0 10px;
@@ -67,6 +89,49 @@ background: linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 
     color: #999999;
 }
 
+.explain_box{
+    margin-top:100px;
+    margin-bottom:100px;
+    text-align: center;
+    padding-left:10%;
+    padding-right:10%;
+}
+
+.explain{
+    position: relative;
+    color: black;
+    font-size: 20px;
+    font-family: Noto Sans KR; font-weight: 400; word-wrap: break-word
+}
+
+
+.transformbox{
+    display:flex;
+    justify-content: center;
+    align-items: center;
+    margin-top:100px;
+    margin-bottom:100px;
+}
+
+
+.transformButton{
+    width: 300px;
+    height: 80px;
+    margin-top:100px;
+    background: #F0743E;
+    box-shadow: 0px 4px 4px rgba(0, 0, 0, 0.25);
+    border-radius: 25px;
+    border-style: none;
+    margin: 0 auto;
+}
+
+.transformButton > span{
+    color: rgb(255, 255, 255);
+    text-align: center;
+    font-size: 24px;
+    font-family: Noto Sans KR;
+    font-weight: 700;
+}
 
 .foot{
     position:relative;
@@ -84,4 +149,15 @@ background: linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 
     font-family: Noto Sans KR;
     color:#000;
     font-weight: 400;
+}
+
+.button_box{
+    margin: 0 auto;
+    width:80%;
+    align-items: center;
+}
+
+.btn-check{
+    margin-left:10px;
+    
 }
