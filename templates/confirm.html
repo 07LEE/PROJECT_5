@@ -13,28 +13,27 @@
 <body>
     <div class="background">
         <div class="header"><a href="/">
-            <span class="title">Nouvel : Novel for you</span></a></div>
+                <span class="title">Nouvel : Novel for you</span></a></div>
         <div class="empty"></div>
         <div class="box">
-            <div class="subtitle">감지한 등장인물 리스트</div>
-            {% for line in name_list %}
-            <span>{{ line }}</span>
-            {% endfor %}
-            <!-- <div class="formbox">
-                <div class="mb-3">
-                    <label for="formFileSm" class="form-label">첨부파일 업로드 </label>
-                    <input class="form-control form-control-sm" id="formFileSm" type="file">
-                </div>
-            </div> -->
-            <div class="transformbox">
-                <button class="transformButton"><span>변환하기</span></button>
+            <div class="subtitle">감지한 등장인물 명단</div>
+            <div class="explain_box">
+                {% for line in name_list %}
+                <span>{{ line }}</span>
+                {% endfor %}
             </div>
+            <form id="modelform" action="/find-speaker" method="post" enctype="multipart/form-data">
+                <div class="transformbox">
+                    <button class="transformButton" type="submit"><span>시작하기</span></button>
+                </div>
+            </form>
         </div>
         <div class="foot">
             <div class="footer-text">
                 <span>고려대학교 지능정보 SW 아카데미 5조</span>
             </div>
         </div>
+    </div>
 </body>
 
 </html>

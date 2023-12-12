@@ -9,14 +9,18 @@
 <body>
     <div class="background">
         <div class="header">
-            <span class="title">Nouvel : Novel for you</span>
+            <a href="/">
+                <span class="title">Nouvel : Novel for you</span>
+            </a>
         </div>
         <div class="empty"></div>
         <div class="box">
             <div class="body">
-				{% for line in file_content.split('\n')[:15] %}
-				<p> {{ line }} </p>
-				{% endfor %}
+                <pre>
+                    {% for line in name_list %}
+                        {{ line }}	
+                    {% endfor %}
+                </pre>
             </div>
         </div>
         <div class="foot">
