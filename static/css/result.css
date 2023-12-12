@@ -1,0 +1,87 @@
+.background {
+    position: absolute;
+    width: 100%;
+    left: 0px;
+    top: 0px;
+    
+    background: linear-gradient(0deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.2)), radial-gradient(30.59% 50% at 42.79% 50%, #CDBCDB 0%, rgba(255, 255, 255, 0) 100%) /* warning: gradient uses a rotation that is not supported by CSS and may not behave as expected */, radial-gradient(50.42% 90.14% at 56.33% 0%, #AAD59E 0%, rgba(255, 255, 255, 0) 100%) /* warning: gradient uses a rotation that is not supported by CSS and may not behave as expected */, radial-gradient(38.44% 70.99% at 100% 3.89%, #FDD848 0%, rgba(253, 216, 72, 0) 100%) /* warning: gradient uses a rotation that is not supported by CSS and may not behave as expected */, radial-gradient(72.9% 96.81% at 13.26% 3.19%, #9AB2D4 0%, rgba(255, 255, 255, 0) 100%) /* warning: gradient uses a rotation that is not supported by CSS and may not behave as expected */, linear-gradient(67.08deg, #F6C3AE 32.12%, rgba(255, 255, 255, 0) 83.77%), radial-gradient(81.2% 163.46% at 102.92% 115.65%, #F0743E 0%, rgba(217, 217, 217, 0) 100%) /* warning: gradient uses a rotation that is not supported by CSS and may not behave as expected */;
+    }
+    
+    
+    .header{
+        width: 100%;
+        height: 120px;
+        left: 0px;
+        top: 0px;
+        position: fixed;
+        background-color: #ffffff;
+        z-index: 10;
+    }
+    
+    .title{
+        left: 10%;
+        top: 34px;
+        position: absolute;
+        color: black;
+        font-size: 36px;
+        font-family: Noto Sans KR;
+        font-weight: 700;
+        word-wrap: break-word;
+    }
+    
+    .empty{
+        height:260px;
+    }
+    
+    .box{
+        width: 80%;
+        position:relative;
+        margin:0 auto;
+        background: white;
+        border-top-left-radius: 30px;
+        border-top-right-radius: 30px;
+        border-radius: 30px;
+        padding-bottom:100px;
+        justify-content: center;
+    }
+    
+    .subtitle{
+        padding-top:100px;
+        position: relative;
+        color: black;
+        text-align: center;
+        font-size: 36px;
+        font-family: Noto Sans KR;
+        font-weight: 700;
+        word-wrap: break-word;
+        margin-bottom:100px;
+    }
+    
+    .filebox .upload-name {
+        display: inline-block;
+        height: 40px;
+        padding: 0 10px;
+        vertical-align: middle;
+        border: 1px solid #dddddd;
+        width: 78%;
+        color: #999999;
+    }
+    
+    
+    .foot{
+        position:relative;
+        z-index:10;
+        width:80%;
+        margin-left:10%;
+        margin-right:10%;
+        margin-top:72px;
+        margin-bottom:72px;
+    }
+    
+    .foot span{
+        text-align: center;
+        font-size: 16px;
+        font-family: Noto Sans KR;
+        color:#000;
+        font-weight: 400;
+    }

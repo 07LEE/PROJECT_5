@@ -2,49 +2,41 @@
 <html lang="ko">
 
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta charset="utf-8">
-  <title>Spakers in Text</title>
-  <link rel="stylesheet" href="/static/css/result.css">
-  <script src="/static/js/processing.js"></script>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta charset="utf-8">
+	<title>Spakers in Text</title>
+	<link rel="stylesheet" href="{{ url_for('static', path='css/result.css') }}">
 </head>
 
 <body>
-  <div class="background">
-    <div class="header">
-      <span class="title">Nouvel : Novel for you</span>
+	<div class="background">
+    	<div class="header">
+      		<span class="title">Nouvel : Novel for you</span>
+    	</div>
+    	<div class="empty"></div>
+		<div class="box">
+			<div class="subtitle">변환된 파일 정보</div>
+			<div class="body" data-filename="{{ filename }}">
+				업로드한 파일 정보: {{ filename }}
+			</div>
+		<div class="body">
+			<pre>
+				{% for line in file_content.split('\n') %}
+					{{ line }}	
+				{% endfor %}
+			</pre>
+			<pre>
+				{% for line in output %}
+					{{ line }}
+				{% endfor %}
+			</pre>
+		</div>
     </div>
-    <div class="empty"></div>
-    <div class="box">
-      <div class="subtitle">변환된 파일 정보</div>
-      <div class="body" data-filename="{{ filename }}">
-        업로드한 파일 정보: {{ filename }}
-      </div>
-      <div class="body">
-        <pre>
-          {% for line in file_content.split('\n') %}
-              {{ line }}
-          {% endfor %}
-          </pre>
-      </div>
-
-      <div class="body">
-        <pre>
-          {% for line in output %}
-            {{ line }}
-          {% endfor %}
-          </pre>
-      </div>
-
-      <div class="body" id="file-info" data-filename="{{ filename }}">
-        <button onclick="startProcessing()">작업 시작</button>
-      </div>
-    </div>
-    <div class="foot">
-      <div class="footer-text">
-        <span>고려대학교 지능정보 SW 아카데미 5조</span>
-      </div>
-    </div>
-  </div>
+    	<div class="foot">
+      		<div class="footer-text">
+        		<span>고려대학교 지능정보 SW 아카데미 5조</span>
+      		</div>
+    	</div>
+  	</div>
 </body>
 </html>

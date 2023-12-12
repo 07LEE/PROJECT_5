@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta charset="utf-8">
     <title>Spakers in Text</title>
     <link rel="stylesheet" href="{{ url_for('static', path='css/put.css') }}">
 </head>
+
 <body>
     <div class="background">
         <div class="header">
@@ -15,7 +17,8 @@
         <div class="box">
             <div class="subtitle">변환할 파일 업로드하기</div>
             <div class="body">
-                <form action="/uploadfile/" method="post" enctype="multipart/form-data">
+                <!-- action 속성을 원하는 엔드포인트로 설정 -->
+                <form action="/upload-and-redirect/" method="post" enctype="multipart/form-data">
                     <div class="filebox">
                         <input class="upload-name" name="file" type="file">
                     </div>
@@ -32,4 +35,5 @@
         </div>
     </div>
 </body>
+
 </html>

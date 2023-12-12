@@ -1,9 +1,10 @@
 """
-A
+This is crud.py
 """
 from sqlalchemy import inspect
-from models import Novel, Episode
-from database import engine, Base, Session
+
+from .database import engine
+
 
 def show_table_info(table_name='all'):
     """
@@ -21,7 +22,7 @@ def show_table_info(table_name='all'):
             columns = inspector.get_columns(table_names)
             for column in columns:
                 print(f"Column: {column['name']}, Type: {column['type']}, "
-                    f"Nullable: {column['nullable']}")
+                      f"Nullable: {column['nullable']}")
 
     # 지정된 테이블의 정보 가져오기
     else:
@@ -30,4 +31,4 @@ def show_table_info(table_name='all'):
         print(f"Table: {table_name}")
         for column in columns:
             print(f"Column: {column['name']}, Type: {column['type']}, "
-                f"Nullable: {column['nullable']}")
+                  f"Nullable: {column['nullable']}")

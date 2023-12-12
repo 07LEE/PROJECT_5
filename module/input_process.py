@@ -1,10 +1,11 @@
 """
 사용자 입력을 가공하는 모듈
 """
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 from model.find_speaker.data_prep import seg_and_mention_location, create_CSS, ISDataset
 from model.find_speaker.arguments import get_train_args
+from model.ner.ner_utils import ner_inference_name, get_ner_predictions
 
 args = get_train_args()
 
@@ -38,7 +39,7 @@ def make_instance_list(text: str, ws=10) -> dict:
         else:
             instance[i] += (lines[num-ws:num + ws + 1])
 
-    return instance, instance_num
+    return instance
 
 def input_data_loader(instances: list, alias2id) -> DataLoader:
     """
@@ -96,3 +97,15 @@ def making_script(text, speaker:list, instance_num:list) -> str:
     for num, people in zip(instance_num, speaker):
         lines[num] = f'{people}: {lines[num]}'
     return lines
+
+def make_name_list(ner_inputs, checkpoint):
+    """
+    문장들을 NER 돌려서 Name List 만들기.
+    """
+    name_list = []
+    for ner_input in ner_inputs:
+        tokenized_sent, pred_tags = get_ner_predictions(ner_input, checkpoint)
+        names = ner_inference_name(tokenized_sent, pred_tags, checkpoint)
+        name_list.append(names)
+
+    return name_list

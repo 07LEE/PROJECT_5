@@ -4,8 +4,9 @@ Author:
 """
 import json
 from sqlalchemy.orm import sessionmaker
-from database import engine
-from models import Novel, Episode, Characters
+
+from .database import engine
+from .models import Novel, Episode, Characters
 
 
 def make_novel_db():
@@ -29,6 +30,7 @@ def make_novel_db():
         session.add(novel_add)
         session.commit()
 
+
 def make_episode_db():
     """
     에피소드 Table
@@ -49,6 +51,7 @@ def make_episode_db():
         session.add(episode_add)
         session.commit()
 
+
 def make_character_db():
     """
     Name List Table
@@ -65,6 +68,7 @@ def make_character_db():
 
         session.add(character_add)
         session.commit()
+
 
 if __name__ == "__main__":
     make_novel_db()
